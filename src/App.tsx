@@ -1,85 +1,77 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Shield } from 'lucide-react';
 import Layout from './components/Layout';
-import ShiftCard from './components/ShiftCard';
-import type { Shift } from './types';
-import { ShiftManager } from './services/ShiftManager';
-import { logger } from './utils/logger';
-
-const SAMPLE_SHIFT: Shift = {
-  id: '1',
-  date: new Date('2024-03-23'),
-  startTime: '08:35',
-  endTime: '10:20',
-  l1Volunteers: [],
-  status: 'OPEN',
-};
+import Schedule from './pages/Schedule';
+import Volunteers from './pages/Volunteers';
+import MyShifts from './pages/MyShifts';
+import Notifications from './pages/Notifications';
+import Reports from './pages/Reports';
+import Settings from './pages/Settings';
+import ShiftDetail from './pages/ShiftDetail';
+import Login from './pages/Login';
+import { testConnection } from './lib/supabase';
 
 function App() {
-  const shiftManager = React.useMemo(() => ShiftManager.getInstance(), []);
-  const [error, setError] = React.useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState(true);
+  const [connectionError, setConnectionError] = useState(false);
 
-  React.useEffect(() => {
-    logger.info('App component mounted');
-    return () => {
-      logger.info('App component unmounted');
+  useEffect(() => {
+    const checkConnection = async () => {
+      const isConnected = await testConnection();
+      setConnectionError(!isConnected);
+      setIsConnecting(false);
     };
+
+    checkConnection();
   }, []);
 
-  const handleSignUp = async () => {
-    setError(null);
-    try {
-      const mockUser = {
-        id: 'user1',
-        email: 'volunteer@example.com',
-        name: 'John Doe',
-        role: 'L1',
-        phone: '555-0123',
-        active: true,
-        joinDate: new Date(),
-        lastActive: new Date()
-      };
-
-      await shiftManager.signUpForShift(SAMPLE_SHIFT.id, mockUser);
-      alert('Successfully signed up for shift!');
-    } catch (error) {
-      logger.error('Failed to sign up for shift', error);
-      setError(error instanceof Error ? error.message : 'Failed to sign up. Please try again.');
-    }
-  };
-
-  const handleRequestCoverage = async () => {
-    setError(null);
-    try {
-      await shiftManager.requestCoverage(
-        SAMPLE_SHIFT.id,
-        'user1',
-        'Unable to attend due to family commitment'
-      );
-      alert('Coverage request submitted successfully!');
-    } catch (error) {
-      logger.error('Failed to request coverage', error);
-      setError(error instanceof Error ? error.message : 'Failed to request coverage. Please try again.');
-    }
-  };
-
-  return (
-    <Layout>
-      <div className="max-w-4xl mx-auto">
-        {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-red-700">{error}</p>
-          </div>
-        )}
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Available Shifts</h2>
-        <div className="space-y-6">
-          <ShiftCard 
-            shift={SAMPLE_SHIFT}
-            onSignUp={handleSignUp}
-            onRequestCoverage={handleRequestCoverage}
-          />
+  if (isConnecting) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Shield className="w-12 h-12 text-blue-600 mx-auto mb-4" />
+          <div className="text-gray-600">Connecting to database...</div>
         </div>
       </div>
-    </Layout>
+    );
+  }
+
+  if (connectionError) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <Shield className="w-12 h-12 text-red-600 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Connection Error</h2>
+          <p className="text-gray-600 mb-4">
+            Unable to connect to the database. Please try refreshing the page or contact support if the problem persists.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Retry Connection
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Router>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Schedule />} />
+          <Route path="volunteers" element={<Volunteers />} />
+          <Route path="my-shifts" element={<MyShifts />} />
+          <Route path="notifications" element={<Notifications />} />
+          <Route path="reports" element={<Reports />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="shifts/:id" element={<ShiftDetail />} />
+        </Route>
+      </Routes>
+    </Router>
   );
 }
 
