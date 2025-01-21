@@ -3,24 +3,46 @@ import { format } from 'date-fns';
 import clsx from 'clsx';
 
 function ChatMessage({ message, isConsecutive }) {
-  const isCustomer = message.type === 'customer';
+  if (message.type === 'system') {
+    return (
+      <div className="flex justify-center my-4">
+        <p className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-dark-hover px-3 py-1 rounded-full">
+          {message.text}
+        </p>
+      </div>
+    );
+  }
+
+  const isCurrentUser = message.sender.name === 'You';
   
   return (
     <div className={clsx(
       'flex gap-3',
-      isCustomer ? 'justify-start' : 'justify-end',
+      isCurrentUser ? 'justify-end' : 'justify-start',
       isConsecutive ? 'mt-1' : 'mt-4'
     )}>
+      {!isCurrentUser && !isConsecutive && (
+        <img
+          src={message.sender.avatar}
+          alt={message.sender.name}
+          className="w-8 h-8 rounded-full"
+        />
+      )}
+      {!isCurrentUser && isConsecutive && <div className="w-8" />}
       <div className={clsx(
-        'max-w-[70%] rounded-2xl px-4 py-2',
-        isCustomer 
-          ? 'bg-gray-100 dark:bg-dark-hover' 
-          : 'bg-primary text-white'
+        'max-w-[70%]',
+        isCurrentUser ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-dark-hover',
+        'rounded-2xl px-4 py-2'
       )}>
+        {!isCurrentUser && !isConsecutive && (
+          <p className="text-xs font-medium text-gray-900 dark:text-white mb-1">
+            {message.sender.name}
+          </p>
+        )}
         <p className="text-sm whitespace-pre-wrap">{message.text}</p>
         <p className={clsx(
           'text-xs mt-1',
-          isCustomer ? 'text-gray-500 dark:text-gray-400' : 'text-white/80'
+          isCurrentUser ? 'text-white/80' : 'text-gray-500 dark:text-gray-400'
         )}>
           {format(new Date(message.timestamp), 'HH:mm')}
         </p>
@@ -49,29 +71,60 @@ export function ChatView({ conversation, onSendMessage }) {
     setNewMessage('');
   };
 
+  const renderHeader = () => {
+    if (conversation.type === 'shift') {
+      return (
+        <div className="flex items-center gap-3">
+          <div className="flex -space-x-2">
+            {conversation.participants.slice(0, 3).map(participant => (
+              <div key={participant.id} className="relative">
+                <img
+                  src={participant.avatar}
+                  alt={participant.name}
+                  className="w-8 h-8 rounded-full border-2 border-white dark:border-dark-card"
+                />
+                {participant.status === 'online' && (
+                  <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-green-500 border border-white dark:border-dark-card" />
+                )}
+              </div>
+            ))}
+          </div>
+          <div>
+            <h2 className="text-base font-medium text-gray-900 dark:text-white">
+              {format(new Date(conversation.shiftDate), 'MMMM d')} Shift
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {conversation.participants.length} participants
+            </p>
+          </div>
+        </div>
+      );
+    } else {
+      return (
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
+            <span className="text-sm font-medium text-primary">
+              {conversation.participants}
+            </span>
+          </div>
+          <div>
+            <h2 className="text-base font-medium text-gray-900 dark:text-white">
+              {conversation.name}
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {conversation.participants} participants
+            </p>
+          </div>
+        </div>
+      );
+    }
+  };
+
   return (
     <>
       {/* Header */}
-      <div className="flex items-center gap-3 p-4 border-b border-gray-100 dark:border-gray-800">
-        <div className="relative">
-          <img
-            src={conversation.customer.avatar}
-            alt={conversation.customer.name}
-            className="w-10 h-10 rounded-full"
-          />
-          <span className={clsx(
-            'absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white dark:border-dark-card',
-            conversation.customer.status === 'online' ? 'bg-green-500' : 'bg-gray-400'
-          )} />
-        </div>
-        <div>
-          <h2 className="text-base font-medium text-gray-900 dark:text-white">
-            {conversation.customer.name}
-          </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            {conversation.customer.status === 'online' ? 'Online' : 'Offline'}
-          </p>
-        </div>
+      <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
+        {renderHeader()}
       </div>
 
       {/* Messages */}
@@ -83,6 +136,7 @@ export function ChatView({ conversation, onSendMessage }) {
             isConsecutive={
               index > 0 && 
               conversation.messages[index - 1].type === message.type &&
+              conversation.messages[index - 1].sender?.name === message.sender?.name &&
               new Date(message.timestamp).getTime() - 
               new Date(conversation.messages[index - 1].timestamp).getTime() < 300000
             }

@@ -5,10 +5,9 @@ import clsx from 'clsx';
 export function MobileMenu({ isOpen, onClose, currentPage, onNavigate }) {
   const menuItems = [
     { id: 'dashboard', label: 'Home', icon: HomeIcon },
-    { id: 'customers', label: 'Customers', icon: CustomersIcon },
-    { id: 'conversations', label: 'Conversations', icon: ConversationsIcon },
-    { id: 'campaigns', label: 'Campaigns', icon: CampaignsIcon },
-    { id: 'reporting', label: 'Reporting', icon: ReportingIcon },
+    { id: 'volunteers', label: 'Volunteers', icon: CustomersIcon },
+    { id: 'shift-signup', label: 'Shift Signup', icon: CustomersIcon },
+    { id: 'conversations', label: 'Conversations', icon: ConversationsIcon }
   ];
 
   return (
@@ -22,7 +21,7 @@ export function MobileMenu({ isOpen, onClose, currentPage, onNavigate }) {
       <div className="fixed inset-y-0 left-0 w-full max-w-xs">
         <Dialog.Panel className="h-full bg-white dark:bg-dark-card shadow-xl">
           <div className="flex h-16 items-center justify-between px-4 border-b border-gray-100 dark:border-gray-800">
-            <span className="text-xl font-bold text-primary">Bolt CRM</span>
+            <span className="text-xl font-bold text-primary">CSS Guardian</span>
             <button
               onClick={onClose}
               className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg"
@@ -79,22 +78,6 @@ function ConversationsIcon() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256">
       <path d="M216,48H40A16,16,0,0,0,24,64V224a15.85,15.85,0,0,0,9.24,14.5A16.13,16.13,0,0,0,40,240a15.89,15.89,0,0,0,10.25-3.78.69.69,0,0,0,.13-.11L82.5,208H216a16,16,0,0,0,16-16V64A16,16,0,0,0,216,48ZM40,224h0ZM216,192H82.5a16,16,0,0,0-10.3,3.75l-.12.11L40,224V64H216ZM116,128a12,12,0,1,1,12,12A12,12,0,0,1,116,128Zm-44,0a12,12,0,1,1,12,12A12,12,0,0,1,72,128Zm88,0a12,12,0,1,1,12,12A12,12,0,0,1,160,128Z" />
-    </svg>
-  );
-}
-
-function CampaignsIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256">
-      <path d="M240,120a48.05,48.05,0,0,0-48-48H152.2c-2.91-.17-53.62-3.74-101.91-44.24A16,16,0,0,0,24,40V200a16,16,0,0,0,26.29,12.25c37.77-31.68,77-40.76,93.71-43.3v31.72A16,16,0,0,0,151.12,214l11,7.33A16,16,0,0,0,186.5,212l11.77-44.36A48.07,48.07,0,0,0,240,120ZM40,199.93V40h0c42.81,35.91,86.63,45,104,47.24v65.48C126.65,155,82.84,164.07,40,199.93Zm131,8,0,.11-11-7.33V168h21.6ZM192,152H160V88h32a32,32,0,1,1,0,64Z" />
-    </svg>
-  );
-}
-
-function ReportingIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256">
-      <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm71.87,53.27L136,114.14V40.37A88,88,0,0,1,199.87,77.27ZM120,40.37v83l-71.89,41.5A88,88,0,0,1,120,40.37ZM128,216a88,88,0,0,1-71.87-37.27L207.89,91.12A88,88,0,0,1,128,216Z" />
     </svg>
   );
 }

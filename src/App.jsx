@@ -2,57 +2,53 @@ import React, { useState } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { Header } from './components/ui/Header';
 import Sidebar from './components/Sidebar';
-import Dashboard from './components/Dashboard';
+import { Dashboard } from './components/Dashboard';
 import { VolunteersPage } from './components/volunteers/VolunteersPage';
+import { ShiftSignupPage } from './components/volunteers/ShiftSignupPage';
+import { ShiftDetailPage } from './components/volunteers/ShiftDetailPage';
 import { ConversationsPage } from './components/conversations/ConversationsPage';
-import { CampaignsPage } from './components/campaigns/CampaignsPage';
-import { ReportingPage } from './components/reporting/ReportingPage';
 import { ProfilePage } from './components/profile/ProfilePage';
 import { SettingsPage } from './components/settings/SettingsPage';
 import { MobileMenu } from './components/ui/MobileMenu';
 
-/**
- * Main application component that handles routing and layout.
- * Manages the sidebar state and current page navigation.
- */
 export default function App() {
-  // State for mobile sidebar visibility
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  
-  // Current active page/route
   const [currentPage, setCurrentPage] = useState('dashboard');
+  const [selectedShift, setSelectedShift] = useState(null);
 
-  /**
-   * Handles navigation between pages and closes mobile sidebar
-   * @param {string} page - The page identifier to navigate to
-   */
   const handleMenuItemClick = (page) => {
     setCurrentPage(page);
     setIsSidebarOpen(false);
   };
 
-  /**
-   * Renders the appropriate page component based on current route
-   * @returns {React.ReactNode} The page component to render
-   */
+  const handleViewShift = (shift) => {
+    setSelectedShift(shift);
+    setCurrentPage('shift-detail');
+  };
+
+  const handleBackToShifts = () => {
+    setSelectedShift(null);
+    setCurrentPage('shift-signup');
+  };
+
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <Dashboard />;
+        return <Dashboard onViewShift={handleViewShift} />;
       case 'volunteers':
         return <VolunteersPage />;
+      case 'shift-signup':
+        return <ShiftSignupPage onViewShift={handleViewShift} />;
+      case 'shift-detail':
+        return <ShiftDetailPage shift={selectedShift} onBack={handleBackToShifts} />;
       case 'conversations':
         return <ConversationsPage />;
-      case 'campaigns':
-        return <CampaignsPage />;
-      case 'reporting':
-        return <ReportingPage />;
       case 'profile':
         return <ProfilePage />;
       case 'settings':
         return <SettingsPage />;
       default:
-        return <Dashboard />;
+        return <Dashboard onViewShift={handleViewShift} />;
     }
   };
 
