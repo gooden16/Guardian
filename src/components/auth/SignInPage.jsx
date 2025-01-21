@@ -36,7 +36,7 @@ export function SignInPage({ onToggleAuth }) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-gray-50 dark:bg-dark-bg flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">CSS Guardian</h1>

@@ -1,17 +1,17 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
+    './index.html',
+    './src/**/*.{js,ts,jsx,tsx}',
   ],
   darkMode: 'class',
   theme: {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#1e40af',
-          light: '#3b82f6',
-          hover: '#1e3a8a'
+          DEFAULT: '#4f46e5',
+          light: '#6366f1',
+          hover: '#4338ca'
         },
         success: '#059669',
         gray: {

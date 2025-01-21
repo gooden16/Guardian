@@ -17,6 +17,7 @@ export function SignUpPage({ onToggleAuth }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    let newUser;
 
     try {
       // Validate passwords match
@@ -25,19 +26,21 @@ export function SignUpPage({ onToggleAuth }) {
       }
 
       // Sign up with Supabase
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+      const { data, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password
       });
 
       if (signUpError) throw signUpError;
-      if (!authData.user) throw new Error('Failed to create account');
+      if (!data?.user) throw new Error('Failed to create account');
+      
+      newUser = data.user;
 
       // Create profile
       const { error: profileError } = await supabase
         .from('profiles')
         .insert({
-          id: authData.user.id,
+          id: newUser.id,
           name: formData.name,
           email: formData.email,
           training_level: formData.trainingLevel,
@@ -50,17 +53,29 @@ export function SignUpPage({ onToggleAuth }) {
         throw new Error('Failed to create profile');
       }
 
-      toast.success('Account created successfully! Please check your email for verification.');
+      // Sign in immediately after signup
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (signInError) throw signInError;
+
+      toast.success('Account created successfully!');
     } catch (error) {
       console.error('Signup error:', error);
       toast.error(error.message);
+      // Clean up if profile creation failed
+      if (newUser) {
+        await supabase.auth.admin.deleteUser(newUser.id).catch(console.error);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-gray-50 dark:bg-dark-bg flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">CSS Guardian</h1>

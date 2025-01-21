@@ -5,40 +5,40 @@ export const isShabbat = (date) => {
   return isSaturday(date);
 };
 
-// Major Jewish holidays in 2024
+// Major Jewish holidays in 2025
 // Note: Holidays begin at sundown the evening before
-export const HOLIDAYS_2024 = [
-  { name: 'Tu BiShvat', date: '2024-01-25', hasEveningShift: false },
-  { name: 'Purim', date: '2024-03-24', hasEveningShift: true },
-  { name: 'Pesach I', date: '2024-04-23', hasEveningShift: true },
-  { name: 'Pesach II', date: '2024-04-24', hasEveningShift: false },
-  { name: 'Pesach VII', date: '2024-04-29', hasEveningShift: true },
-  { name: 'Pesach VIII', date: '2024-04-30', hasEveningShift: false },
-  { name: 'Shavuot I', date: '2024-06-12', hasEveningShift: true },
-  { name: 'Shavuot II', date: '2024-06-13', hasEveningShift: false },
-  { name: 'Rosh Hashana I', date: '2024-10-03', hasEveningShift: true },
-  { name: 'Rosh Hashana II', date: '2024-10-04', hasEveningShift: false },
-  { name: 'Yom Kippur', date: '2024-10-12', hasEveningShift: true },
-  { name: 'Sukkot I', date: '2024-10-17', hasEveningShift: true },
-  { name: 'Sukkot II', date: '2024-10-18', hasEveningShift: false },
-  { name: 'Shemini Atzeret', date: '2024-10-24', hasEveningShift: true },
-  { name: 'Simchat Torah', date: '2024-10-25', hasEveningShift: false }
+export const HOLIDAYS_2025 = [
+  { name: 'Tu BiShvat', date: '2025-02-13', hasEveningShift: false },
+  { name: 'Purim', date: '2025-03-15', hasEveningShift: true },
+  { name: 'Pesach I', date: '2025-04-13', hasEveningShift: true },
+  { name: 'Pesach II', date: '2025-04-14', hasEveningShift: false },
+  { name: 'Pesach VII', date: '2025-04-20', hasEveningShift: true },
+  { name: 'Pesach VIII', date: '2025-04-21', hasEveningShift: false },
+  { name: 'Shavuot I', date: '2025-06-02', hasEveningShift: true },
+  { name: 'Shavuot II', date: '2025-06-03', hasEveningShift: false },
+  { name: 'Rosh Hashana I', date: '2025-09-23', hasEveningShift: true },
+  { name: 'Rosh Hashana II', date: '2025-09-24', hasEveningShift: false },
+  { name: 'Yom Kippur', date: '2025-10-02', hasEveningShift: true },
+  { name: 'Sukkot I', date: '2025-10-07', hasEveningShift: true },
+  { name: 'Sukkot II', date: '2025-10-08', hasEveningShift: false },
+  { name: 'Shemini Atzeret', date: '2025-10-14', hasEveningShift: true },
+  { name: 'Simchat Torah', date: '2025-10-15', hasEveningShift: false }
 ];
 
 export const isJewishHoliday = (date) => {
   const dateStr = format(date, 'yyyy-MM-dd');
-  return HOLIDAYS_2024.some(holiday => holiday.date === dateStr);
+  return HOLIDAYS_2025.some(holiday => holiday.date === dateStr);
 };
 
 export const getHolidayName = (date) => {
   const dateStr = format(date, 'yyyy-MM-dd');
-  const holiday = HOLIDAYS_2024.find(h => h.date === dateStr);
+  const holiday = HOLIDAYS_2025.find(h => h.date === dateStr);
   return holiday ? holiday.name : null;
 };
 
 export const hasEveningShift = (date) => {
   const dateStr = format(date, 'yyyy-MM-dd');
-  const holiday = HOLIDAYS_2024.find(h => h.date === dateStr);
+  const holiday = HOLIDAYS_2025.find(h => h.date === dateStr);
   return holiday ? holiday.hasEveningShift : false;
 };
 
