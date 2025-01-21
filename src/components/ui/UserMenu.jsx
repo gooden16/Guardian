@@ -1,6 +1,8 @@
 import React from 'react';
 import { Menu } from '@headlessui/react';
+import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../contexts/AuthContext';
 
 const userNavigation = [
   { id: 'profile', name: 'Your Profile', icon: 'user' },
@@ -9,22 +11,33 @@ const userNavigation = [
 ];
 
 export function UserMenu({ onNavigate }) {
-  const handleAction = (action) => {
+  const { profile } = useAuth();
+
+  const handleAction = async (action) => {
     if (action === 'profile') {
       onNavigate('profile');
     } else if (action === 'settings') {
       onNavigate('settings');
     } else if (action === 'logout') {
-      toast.success('Signed out successfully');
+      try {
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+        toast.success('Signed out successfully');
+      } catch (error) {
+        toast.error('Error signing out');
+        console.error('Error:', error);
+      }
     }
   };
+
+  if (!profile) return null;
 
   return (
     <Menu as="div" className="relative">
       <Menu.Button className="flex items-center gap-2 p-1.5 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-colors">
         <img
-          src="https://cdn.usegalileo.ai/stability/117a7a12-7704-4917-9139-4a3f76c42e78.png"
-          alt="User"
+          src={profile.avatar_url || 'https://via.placeholder.com/32'}
+          alt={profile.name}
           className="w-8 h-8 rounded-full"
         />
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256">
@@ -34,8 +47,8 @@ export function UserMenu({ onNavigate }) {
 
       <Menu.Items className="absolute right-0 mt-1 w-56 bg-white dark:bg-dark-card rounded-xl shadow-lg border border-gray-100 dark:border-gray-800 focus:outline-none">
         <div className="p-4 border-b border-gray-100 dark:border-gray-800">
-          <p className="text-sm font-medium text-gray-900 dark:text-white">Alice Freeman</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">alice@example.com</p>
+          <p className="text-sm font-medium text-gray-900 dark:text-white">{profile.name}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{profile.email}</p>
         </div>
 
         <div className="p-2">
@@ -44,9 +57,10 @@ export function UserMenu({ onNavigate }) {
               {({ active }) => (
                 <button
                   onClick={() => handleAction(item.id)}
-                  className={`flex items-center gap-2 w-full px-3 py-2 text-sm rounded-lg ${
+                  className={clsx(
+                    'flex items-center gap-2 w-full px-3 py-2 text-sm rounded-lg',
                     active ? 'bg-gray-50 dark:bg-dark-hover' : ''
-                  }`}
+                  )}
                 >
                   <span className={`text-gray-500 ${item.id === 'logout' ? 'text-red-500' : ''}`}>
                     {item.icon === 'user' ? (

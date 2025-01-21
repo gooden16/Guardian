@@ -9,12 +9,37 @@ import { ShiftDetailPage } from './components/volunteers/ShiftDetailPage';
 import { ConversationsPage } from './components/conversations/ConversationsPage';
 import { ProfilePage } from './components/profile/ProfilePage';
 import { SettingsPage } from './components/settings/SettingsPage';
+import { AuthPage } from './components/auth/AuthPage';
 import { MobileMenu } from './components/ui/MobileMenu';
+import { useAuth } from './contexts/AuthContext';
 
 export default function App() {
+  const { user, profile, loading } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [selectedShift, setSelectedShift] = useState(null);
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-dark-bg flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show auth page if not authenticated
+  if (!user || !profile) {
+    return (
+      <>
+        <AuthPage />
+        <Toaster position="top-right" />
+      </>
+    );
+  }
 
   const handleMenuItemClick = (page) => {
     setCurrentPage(page);

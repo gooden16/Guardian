@@ -2,31 +2,57 @@ import React, { useState } from 'react';
 import { Card, CardHeader, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import toast from 'react-hot-toast';
-
-const initialProfile = {
-  name: 'Alice Freeman',
-  email: 'alice@example.com',
-  avatar: 'https://cdn.usegalileo.ai/stability/117a7a12-7704-4917-9139-4a3f76c42e78.png',
-  role: 'Admin',
-  timezone: 'America/New_York',
-  notifications: {
-    email: true,
-    push: true,
-    updates: false
-  }
-};
+import { updateProfile, uploadAvatar } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 
 export function ProfilePage() {
-  const [profile, setProfile] = useState(initialProfile);
+  const { profile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState(profile);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setProfile(formData);
-    setIsEditing(false);
-    toast.success('Profile updated successfully');
+    try {
+      const updatedProfile = await updateProfile(formData);
+      setFormData(updatedProfile);
+      setIsEditing(false);
+      toast.success('Profile updated successfully');
+    } catch (error) {
+      toast.error('Error updating profile');
+      console.error('Error:', error);
+    }
   };
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Photo must be less than 5MB');
+      return;
+    }
+
+    try {
+      const updatedProfile = await uploadAvatar(file);
+      setFormData(updatedProfile);
+      toast.success('Photo uploaded successfully');
+    } catch (error) {
+      toast.error('Error uploading photo');
+      console.error('Error:', error);
+    }
+  };
+
+  if (!profile) {
+    return (
+      <main className="flex-1 min-w-0 overflow-auto">
+        <div className="max-w-[1440px] mx-auto animate-fade-in p-4">
+          <div className="flex items-center justify-center h-64">
+            <p className="text-gray-500 dark:text-gray-400">Profile not found. Please sign in.</p>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="flex-1 min-w-0 overflow-auto">
@@ -36,9 +62,8 @@ export function ProfilePage() {
         </div>
 
         <div className="p-4">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Profile Overview */}
-            <Card className="lg:col-span-2">
+          <div className="max-w-2xl mx-auto">
+            <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <h2 className="text-gray-900 dark:text-white text-lg font-semibold">Profile Information</h2>
@@ -57,7 +82,31 @@ export function ProfilePage() {
               </CardHeader>
               <CardContent>
                 {isEditing ? (
-                  <form onSubmit={handleSubmit} className="space-y-4">
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="relative">
+                        <img
+                          src={formData.avatar_url || 'https://via.placeholder.com/128'}
+                          alt={formData.name}
+                          className="w-32 h-32 rounded-full object-cover"
+                        />
+                        <label className="absolute bottom-0 right-0 p-2 bg-primary text-white rounded-full cursor-pointer hover:bg-primary-light transition-colors">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handlePhotoUpload}
+                          />
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 256 256">
+                            <path d="M208,56H180.28L166.65,35.56A8,8,0,0,0,160,32H96a8,8,0,0,0-6.65,3.56L75.71,56H48A24,24,0,0,0,24,80V192a24,24,0,0,0,24,24H208a24,24,0,0,0,24-24V80A24,24,0,0,0,208,56Zm8,136a8,8,0,0,1-8,8H48a8,8,0,0,1-8-8V80a8,8,0,0,1,8-8H80a8,8,0,0,0,6.66-3.56L100.28,48h55.43l13.63,20.44A8,8,0,0,0,176,72h32a8,8,0,0,1,8,8ZM128,88a44,44,0,1,0,44,44A44.05,44.05,0,0,0,128,88Zm0,72a28,28,0,1,1,28-28A28,28,0,0,1,128,160Z" />
+                          </svg>
+                        </label>
+                      </div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Click the camera icon to upload a new photo
+                      </p>
+                    </div>
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Full Name
@@ -104,24 +153,30 @@ export function ProfilePage() {
                   </form>
                 ) : (
                   <div className="space-y-6">
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-col items-center gap-4">
                       <img
-                        src={profile.avatar}
+                        src={profile.avatar_url || 'https://via.placeholder.com/128'}
                         alt={profile.name}
-                        className="w-20 h-20 rounded-full"
+                        className="w-32 h-32 rounded-full object-cover"
                       />
-                      <div>
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                          {profile.name}
-                        </h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">{profile.role}</p>
-                      </div>
                     </div>
 
-                    <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <dl className="grid grid-cols-1 gap-4">
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Name</dt>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{profile.name}</dd>
+                      </div>
                       <div>
                         <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Email</dt>
                         <dd className="mt-1 text-sm text-gray-900 dark:text-white">{profile.email}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Role</dt>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{profile.role}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Training Level</dt>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{profile.training_level}</dd>
                       </div>
                       <div>
                         <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Timezone</dt>
@@ -130,73 +185,6 @@ export function ProfilePage() {
                     </dl>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-
-            {/* Notification Preferences */}
-            <Card>
-              <CardHeader>
-                <h2 className="text-gray-900 dark:text-white text-lg font-semibold">Notification Settings</h2>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <label className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={profile.notifications.email}
-                      onChange={(e) => setProfile({
-                        ...profile,
-                        notifications: {
-                          ...profile.notifications,
-                          email: e.target.checked
-                        }
-                      })}
-                      className="checkbox-custom"
-                    />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">Email Notifications</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Receive emails about your account activity</p>
-                    </div>
-                  </label>
-
-                  <label className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={profile.notifications.push}
-                      onChange={(e) => setProfile({
-                        ...profile,
-                        notifications: {
-                          ...profile.notifications,
-                          push: e.target.checked
-                        }
-                      })}
-                      className="checkbox-custom"
-                    />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">Push Notifications</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Receive push notifications in your browser</p>
-                    </div>
-                  </label>
-
-                  <label className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={profile.notifications.updates}
-                      onChange={(e) => setProfile({
-                        ...profile,
-                        notifications: {
-                          ...profile.notifications,
-                          updates: e.target.checked
-                        }
-                      })}
-                      className="checkbox-custom"
-                    />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">Product Updates</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Receive updates about new features and improvements</p>
-                    </div>
-                  </label>
-                </div>
               </CardContent>
             </Card>
           </div>

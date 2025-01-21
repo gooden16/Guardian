@@ -1,8 +1,6 @@
 import React from 'react';
 import { Card, CardHeader, CardContent } from '../ui/Card';
-import { GeneralSettings } from './sections/GeneralSettings';
-import { SecuritySettings } from './sections/SecuritySettings';
-import { IntegrationSettings } from './sections/IntegrationSettings';
+import { NotificationSettings } from './sections/NotificationSettings';
 
 export function SettingsPage() {
   return (
@@ -12,10 +10,10 @@ export function SettingsPage() {
           <h1 className="text-gray-900 dark:text-white text-2xl md:text-3xl font-bold">Settings</h1>
         </div>
 
-        <div className="p-4 space-y-4">
-          <GeneralSettings />
-          <SecuritySettings />
-          <IntegrationSettings />
+        <div className="p-4">
+          <div className="max-w-2xl mx-auto">
+            <NotificationSettings />
+          </div>
         </div>
       </div>
     </main>
