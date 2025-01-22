@@ -11,12 +11,17 @@ import { SettingsPage } from './components/settings/SettingsPage.jsx';
 import { AuthPage } from './components/auth/AuthPage.jsx';
 import { MobileMenu } from './components/ui/MobileMenu';
 import { useAuthContext } from './contexts/AuthContext';
+import { supabase } from './lib/supabase';
+import { logger } from './utils/logger';
+import { AuthError, ErrorCodes, getErrorMessage } from './utils/errors';
 
 export default function App() {
-  const { user, profile, loading, initialized } = useAuthContext();
+  const { user, loading, initialized, error } = useAuthContext();
+  const [profile, setProfile] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [selectedShift, setSelectedShift] = useState(null);
+  const [showLoading, setShowLoading] = useState(true);
 
   // Handle navigation from sidebar
   const handleMenuItemClick = (page) => {
@@ -24,8 +29,6 @@ export default function App() {
     setIsSidebarOpen(false);
   };
 
-  // Show loading state for max 5 seconds to prevent infinite loading
-  const [showLoading, setShowLoading] = useState(true);
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowLoading(false);
@@ -33,8 +36,52 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+
+    const loadProfile = async () => {
+      if (!user) {
+        setProfile(null);
+        return;
+      }
+      try {
+        logger.debug('Loading profile', { userId: user.id });
+        
+        const { data, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (profileError) {
+          throw new AuthError(
+            'Failed to fetch profile',
+            ErrorCodes.PROFILE_NOT_FOUND,
+            profileError
+          );
+        }
+
+        if (mounted) {
+          setProfile(data);
+          logger.debug('Profile loaded successfully', { profile: data });
+        }
+      } catch (error) {
+        logger.error('Error loading profile', error);
+        setProfile(null);
+      }
+    };
+
+    if (user) {
+      loadProfile();
+    }
+
+    return () => {
+      mounted = false;
+    };
+  }, [user]);
+
   // Debug log to help identify where we're getting stuck
-  console.log('Auth State:', { loading, initialized, user, profile, showLoading });
+  console.log('Auth State:', { loading, initialized, user, profile, showLoading, error });
 
   // Only show loading state if auth is not initialized and loading is true
   if (!initialized && loading && showLoading) {
@@ -64,10 +111,10 @@ export default function App() {
     switch (currentPage) {
       case 'dashboard':
         return <Dashboard onViewShift={handleViewShift} key="dashboard" />;
-      case 'volunteers':
-        return <VolunteersPage key="volunteers" />;
       case 'shift-signup':
         return <ShiftSignupPage onViewShift={handleViewShift} key="shift-signup" />;
+      case 'volunteers':
+        return <VolunteersPage key="volunteers" />;
       case 'shift-detail':
         return <ShiftDetailPage shift={selectedShift} onBack={handleBackToShifts} key="shift-detail" />;
       case 'conversations':

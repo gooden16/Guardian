@@ -30,37 +30,13 @@ export function AuthProvider({ children }) {
       originalError: error
     });
     
-    setState(prev => ({
-      ...prev,
+    setState({
+      user: null,
+      profile: null,
       loading: false,
       initialized: true,
       error: authError
-    }));
-  }, []);
-
-  const loadProfile = useCallback(async (userId) => {
-    try {
-      logger.debug('Loading profile', { userId });
-      
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (profileError) {
-        throw new AuthError(
-          'Failed to fetch profile',
-          ErrorCodes.PROFILE_NOT_FOUND,
-          profileError
-        );
-      }
-
-      return profile;
-    } catch (error) {
-      logger.error('Error loading profile', error);
-      throw error;
-    }
+    });
   }, []);
 
   const signOut = useCallback(async () => {
@@ -100,12 +76,13 @@ export function AuthProvider({ children }) {
         // Set a timeout to prevent infinite loading
         initTimeout = setTimeout(() => {
           if (mounted && state.loading) {
-            setState(prev => ({
-              ...prev,
+            setState({
+              user: null,
+              profile: null,
               loading: false,
               initialized: true,
               error: new Error('Authentication initialization timed out')
-            }));
+            });
           }
         }, 5000);
 
@@ -134,16 +111,11 @@ export function AuthProvider({ children }) {
           return;
         }
 
-        logger.debug('Session found, loading profile', { userId: session.user.id });
+        logger.debug('Session found', { userId: session.user.id });
         
-        // Load profile
-        const profile = await loadProfile(session.user.id);
-
-        if (!mounted) return;
-
         setState({
           user: session.user,
-          profile,
+          profile: null,
           loading: false,
           initialized: true,
           error: null
@@ -184,30 +156,19 @@ export function AuthProvider({ children }) {
             return;
           }
 
-          setState(prev => ({ ...prev, loading: true }));
-
-          // Load profile
-          const profile = await loadProfile(session.user.id);
-
-          if (!mounted) return;
-
-          logger.info('Auth state updated successfully', {
-            userId: session.user.id,
-            event
-          });
-          
           setState({
             user: session.user,
-            profile,
-            loading: false,
+            profile: null,
+            loading: true,
             initialized: true,
             error: null
           });
         } catch (error) {
           logger.error('Auth state change error', error, { event });
           if (mounted) {
-            setState(prev => ({
-              ...prev,
+            setState({
+              user: null,
+              profile: null,
               loading: false,
               initialized: true,
               error: new AuthError(
@@ -215,7 +176,7 @@ export function AuthProvider({ children }) {
                 ErrorCodes.AUTH_UNKNOWN_ERROR,
                 error
               )
-            }));
+            });
           }
         }
       }
@@ -229,7 +190,7 @@ export function AuthProvider({ children }) {
       }
       subscription?.unsubscribe();
     };
-  }, [handleAuthError, loadProfile]);
+  }, [handleAuthError]);
 
   return (
     <AuthContext.Provider value={{ ...state, signOut }}>

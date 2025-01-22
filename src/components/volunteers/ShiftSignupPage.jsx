@@ -38,6 +38,11 @@ export function ShiftSignupPage({ onViewShift }) {
       [ShiftTime.EARLY_MORNING]: { start: '8:35 AM', end: '10:20 AM' },
       [ShiftTime.LATE_MORNING]: { start: '10:10 AM', end: '12:00 PM' }
     };
+
+    if (!times[time]) {
+      return 'Invalid time';
+    }
+
     return `${times[time].start} - ${times[time].end}`;
   };
 
