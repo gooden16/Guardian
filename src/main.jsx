@@ -4,6 +4,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import App from './App';
 import './index.css';
 import { Toaster } from 'react-hot-toast';
+import { BrowserRouter } from 'react-router-dom';
 
 // Ensure the root element exists
 const rootElement = document.getElementById('root');
@@ -16,9 +17,11 @@ const root = createRoot(rootElement);
 
 root.render(
   <StrictMode>
-    <AuthProvider>
-      <App />
-      <Toaster position="top-right" />
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <App />
+        <Toaster position="top-right" />
+      </AuthProvider>
+    </BrowserRouter>
   </StrictMode>
 );

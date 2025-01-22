@@ -204,8 +204,18 @@ export function AuthProvider({ children }) {
             error: null
           });
         } catch (error) {
+          logger.error('Auth state change error', error, { event });
           if (mounted) {
-            handleAuthError(error);
+            setState(prev => ({
+              ...prev,
+              loading: false,
+              initialized: true,
+              error: new AuthError(
+                'Authentication state change failed',
+                ErrorCodes.AUTH_UNKNOWN_ERROR,
+                error
+              )
+            }));
           }
         }
       }

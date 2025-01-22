@@ -64,8 +64,6 @@ export default function App() {
     switch (currentPage) {
       case 'dashboard':
         return <Dashboard onViewShift={handleViewShift} key="dashboard" />;
-      case 'shift-signup':
-        return <ShiftSignupPage onViewShift={handleViewShift} />;
       case 'volunteers':
         return <VolunteersPage key="volunteers" />;
       case 'shift-signup':

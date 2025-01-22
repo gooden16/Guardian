@@ -6,11 +6,13 @@ import { ShiftTime } from '../../models/Shift';
 import { getHolidayName } from '../../utils/jewishCalendar';
 import { getUpcomingShifts, signUpForShift } from '../../lib/database';
 import toast from 'react-hot-toast';
+import { useAuthContext } from '../../contexts/AuthContext';
 
 export function ShiftSignupPage({ onViewShift }) {
   const [shifts, setShifts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [signingUp, setSigningUp] = useState(false);
+  const { user } = useAuthContext();
 
   useEffect(() => {
     loadShifts();
@@ -29,6 +31,9 @@ export function ShiftSignupPage({ onViewShift }) {
   };
 
   const formatShiftTime = (time) => {
+    if (!time) {
+      return 'Time not specified';
+    }
     const times = {
       [ShiftTime.EARLY_MORNING]: { start: '8:35 AM', end: '10:20 AM' },
       [ShiftTime.LATE_MORNING]: { start: '10:10 AM', end: '12:00 PM' }
@@ -50,6 +55,11 @@ export function ShiftSignupPage({ onViewShift }) {
     } finally {
       setSigningUp(false);
     }
+  };
+
+  const isUserSignedUp = (shift) => {
+    if (!user || !shift.assignments) return false;
+    return shift.assignments.some(assignment => assignment.volunteer?.id === user.id);
   };
 
   if (loading) {
@@ -119,13 +129,16 @@ export function ShiftSignupPage({ onViewShift }) {
                       >
                         View Details
                       </Button>
-                      {shift.spotsAvailable > 0 && (
+                      {shift.spotsAvailable > 0 && !isUserSignedUp(shift) && (
                         <Button 
                           onClick={() => handleSignup(shift)}
                           disabled={signingUp}
                         >
                           {signingUp ? 'Signing up...' : 'Sign Up'}
                         </Button>
+                      )}
+                      {isUserSignedUp(shift) && (
+                        <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Signed Up</span>
                       )}
                     </div>
                   </div>

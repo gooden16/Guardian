@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import toast from 'react-hot-toast';
+import { logger } from '../../utils/logger';
 
 export function SignInPage({ onToggleAuth }) {
   const [loading, setLoading] = useState(false);
@@ -17,17 +18,24 @@ export function SignInPage({ onToggleAuth }) {
     
     try {
       setLoading(true);
+      logger.info('Attempting sign in', { email: formData.email });
 
       const { error } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
       });
 
-      if (error) throw error;
+      if (error) {
+        logger.error('Sign in failed', error);
+        toast.error(error.message);
+        throw error;
+      }
+
+      logger.info('Sign in successful', { email: formData.email });
+      toast.success('Signed in successfully');
 
     } catch (error) {
-      console.error('Sign in error:', error);
-      toast.error(error.message);
+      // Error is already logged above
     } finally {
       setLoading(false);
     }

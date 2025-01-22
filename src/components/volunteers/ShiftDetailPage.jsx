@@ -4,6 +4,9 @@ import { Card, CardHeader, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { SHIFT_TIMES } from '../../models/Shift';
 import { getHolidayName } from '../../utils/jewishCalendar';
+import { WithdrawModal } from './WithdrawModal';
+import { useAuthContext } from '../../contexts/AuthContext';
+import { getShiftById } from '../../lib/database';
 
 const VolunteerCard = ({ volunteer, role }) => (
   <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-dark-hover">
@@ -46,61 +49,22 @@ const Note = ({ note }) => (
 
 export function ShiftDetailPage({ shift: selectedShift, onBack }) {
   const [shift, setShift] = useState(null);
+  const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
+  const { user } = useAuthContext();
 
   useEffect(() => {
-    if (selectedShift) {
-      setShift({
-        ...selectedShift,
-        assignments: {
-          teamLeader: {
-            id: '1',
-            name: 'David Cohen',
-            phone: '(555) 123-4567',
-            email: 'david@example.com'
-          },
-          level1: [
-            {
-              id: '2',
-              name: 'Sarah Levy',
-              phone: '(555) 234-5678',
-              email: 'sarah@example.com'
-            },
-            {
-              id: '3',
-              name: 'Michael Stern',
-              phone: '(555) 345-6789',
-              email: 'michael@example.com'
-            }
-          ],
-          level2: [
-            {
-              id: '4',
-              name: 'Rachel Gold',
-              phone: '(555) 456-7890',
-              email: 'rachel@example.com'
-            }
-          ]
-        },
-        notes: {
-          admin: [
-            {
-              id: '1',
-              text: 'Please arrive 10 minutes early for setup',
-              author: 'CSS Admin',
-              timestamp: '2024-01-10T10:00:00Z'
-            }
-          ],
-          teamLeader: [
-            {
-              id: '1',
-              text: 'Will need extra help with setup due to expected large crowd',
-              author: 'David Cohen',
-              timestamp: '2024-01-12T15:30:00Z'
-            }
-          ]
+    const loadShift = async () => {
+      if (selectedShift) {
+        try {
+          const data = await getShiftById(selectedShift.id);
+          setShift(data);
+        } catch (error) {
+          console.error('Error loading shift:', error);
+          toast.error('Failed to load shift details');
         }
-      });
-    }
+      }
+    };
+    loadShift();
   }, [selectedShift]);
 
   if (!shift) {
@@ -116,6 +80,15 @@ export function ShiftDetailPage({ shift: selectedShift, onBack }) {
       return `${hour}:${minutes} ${period}`;
     };
     return `${formatTime(times.start)} - ${formatTime(times.end)}`;
+  };
+
+  const handleWithdraw = () => {
+    setIsWithdrawOpen(true);
+  };
+
+  const isUserSignedUp = () => {
+    if (!user || !shift.assignments) return false;
+    return shift.assignments.some(assignment => assignment.volunteer?.id === user.id);
   };
 
   return (
@@ -135,9 +108,16 @@ export function ShiftDetailPage({ shift: selectedShift, onBack }) {
               </p>
             )}
           </div>
-          <Button onClick={onBack}>
-            Back to Shifts
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={onBack}>
+              Back to Shifts
+            </Button>
+            {isUserSignedUp() && (
+              <Button variant="secondary" onClick={handleWithdraw}>
+                Withdraw Signup
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-4">
@@ -151,23 +131,23 @@ export function ShiftDetailPage({ shift: selectedShift, onBack }) {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {shift.assignments.teamLeader && (
+                  {shift.assignments.find(a => a.role === 'TEAM_LEADER')?.volunteer && (
                     <VolunteerCard 
-                      volunteer={shift.assignments.teamLeader} 
+                      volunteer={shift.assignments.find(a => a.role === 'TEAM_LEADER').volunteer} 
                       role="Team Leader"
                     />
                   )}
-                  {shift.assignments.level1.map(volunteer => (
+                  {shift.assignments.filter(a => a.role === 'LEVEL_1').map(assignment => (
                     <VolunteerCard 
-                      key={volunteer.id}
-                      volunteer={volunteer}
+                      key={assignment.volunteer.id}
+                      volunteer={assignment.volunteer}
                       role="Level 1"
                     />
                   ))}
-                  {shift.assignments.level2.map(volunteer => (
+                  {shift.assignments.filter(a => a.role === 'LEVEL_2').map(assignment => (
                     <VolunteerCard 
-                      key={volunteer.id}
-                      volunteer={volunteer}
+                      key={assignment.volunteer.id}
+                      volunteer={assignment.volunteer}
                       role="Level 2"
                     />
                   ))}
@@ -212,6 +192,15 @@ export function ShiftDetailPage({ shift: selectedShift, onBack }) {
           </div>
         </div>
       </div>
+      <WithdrawModal
+        isOpen={isWithdrawOpen}
+        onClose={() => setIsWithdrawOpen(false)}
+        shift={shift}
+        onWithdraw={() => {
+          setIsWithdrawOpen(false);
+          onBack();
+        }}
+      />
     </main>
   );
 }

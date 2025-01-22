@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { logger } from '../utils/logger';
 
 const supabaseUrl = 'https://sqnwowrdqyvkypifpvke.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNxbndvd3JkcXl2a3lwaWZwdmtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzc0OTIzNzIsImV4cCI6MjA1MzA2ODM3Mn0.aGf1ku9R8CeLPTJESEZwDbFqbOJcUl84412ED5f3erU';
@@ -18,7 +19,10 @@ export async function getProfile() {
   try {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
-    if (userError) throw userError;
+    if (userError) {
+      logger.error('Error getting user', userError);
+      throw userError;
+    }
     if (!user) throw new Error('Not authenticated');
 
     const { data, error } = await supabase
@@ -27,10 +31,13 @@ export async function getProfile() {
       .eq('id', user.id)
       .single();
 
-    if (error) throw error;
+    if (error) {
+      logger.error('Error getting profile', error);
+      throw error;
+    }
     return data;
   } catch (error) {
-    console.error('Error getting profile:', error);
+    logger.error('Error getting profile:', error);
     throw error;
   }
 }
@@ -38,7 +45,10 @@ export async function getProfile() {
 export async function updateProfile(updates) {
   try {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError) throw userError;
+    if (userError) {
+      logger.error('Error getting user', userError);
+      throw userError;
+    }
     if (!user) throw new Error('Not authenticated');
 
     const { data, error } = await supabase
@@ -48,7 +58,10 @@ export async function updateProfile(updates) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      logger.error('Error updating profile', error);
+      throw error;
+    }
     return data;
   } catch (error) {
     console.error('Error updating profile:', error);
@@ -59,7 +72,10 @@ export async function updateProfile(updates) {
 export async function uploadAvatar(file) {
   try {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError) throw userError;
+    if (userError) {
+      logger.error('Error getting user', userError);
+      throw userError;
+    }
     if (!user) throw new Error('Not authenticated');
 
     // Validate file size (5MB limit)
@@ -80,7 +96,10 @@ export async function uploadAvatar(file) {
       .from('avatars')
       .upload(filePath, file, { upsert: true });
 
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      logger.error('Error uploading file', uploadError);
+      throw uploadError;
+    }
 
     // Get public URL
     const { data: { publicUrl } } = supabase.storage
@@ -95,7 +114,10 @@ export async function uploadAvatar(file) {
       .select()
       .single();
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      logger.error('Error updating profile', updateError);
+      throw updateError;
+    }
     return data;
   } catch (error) {
     console.error('Error uploading avatar:', error);
