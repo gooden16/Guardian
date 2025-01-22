@@ -15,23 +15,19 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 export async function getProfile() {
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+    if (!user) throw new Error('Not authenticated');
 
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
-    if (error) {
-      console.error('Error fetching profile:', error);
-      return null;
-    }
-
+    if (error) throw error;
     return data;
   } catch (error) {
-    console.error('Error in getProfile:', error);
-    return null;
+    console.error('Error fetching profile:', error);
+    throw error;
   }
 }
 
@@ -59,6 +55,16 @@ export async function uploadAvatar(file) {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
+
+    // Validate file size
+    if (file.size > 5 * 1024 * 1024) {
+      throw new Error('File size must be less than 5MB');
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      throw new Error('File must be an image');
+    }
 
     const fileExt = file.name.split('.').pop();
     const filePath = `${user.id}/avatar.${fileExt}`;

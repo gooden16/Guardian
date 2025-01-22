@@ -1,8 +1,5 @@
-import { addMinutes, format, parseISO } from 'date-fns';
-import { zonedTimeToUtc } from 'date-fns-tz';
+import { format, zonedTimeToUtc } from 'date-fns-tz';
 import { ShiftTime } from '../models/Shift';
-
-const TIMEZONE = 'America/New_York';
 
 export const SHIFT_TIMES = {
   [ShiftTime.EARLY]: {
@@ -17,17 +14,15 @@ export const SHIFT_TIMES = {
 
 export const formatShiftTime = (date, time) => {
   const shiftTime = SHIFT_TIMES[time];
-  const [startHour, startMinute] = shiftTime.start.split(':');
-  const [endHour, endMinute] = shiftTime.end.split(':');
   
   const start = zonedTimeToUtc(
     `${format(date, 'yyyy-MM-dd')}T${shiftTime.start}:00`,
-    TIMEZONE
+    'America/New_York'
   );
   
   const end = zonedTimeToUtc(
     `${format(date, 'yyyy-MM-dd')}T${shiftTime.end}:00`,
-    TIMEZONE
+    'America/New_York'
   );
 
   return {

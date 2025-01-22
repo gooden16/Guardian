@@ -1,48 +1,31 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Card, CardHeader, CardContent } from '../ui/Card';
-import { ShiftTime, SHIFT_TIMES } from '../../models/Shift';
-import { getHolidayName, getNextShiftDates } from '../../utils/jewishCalendar';
-
-// Get the next 5 shift dates
-const nextShiftDates = getNextShiftDates(5);
-
-// Create upcoming shifts based on the next valid dates
-const UPCOMING_SHIFTS = [
-  {
-    date: nextShiftDates[0],
-    time: ShiftTime.EARLY_MORNING,
-    role: 'Team Leader',
-    spotsAvailable: 1
-  },
-  {
-    date: nextShiftDates[0],
-    time: ShiftTime.LATE_MORNING,
-    role: 'Level 1',
-    spotsAvailable: 2
-  },
-  {
-    date: nextShiftDates[1],
-    time: ShiftTime.EARLY_MORNING,
-    role: 'Level 2',
-    spotsAvailable: 1
-  },
-  {
-    date: nextShiftDates[1],
-    time: ShiftTime.LATE_MORNING,
-    role: 'Level 1',
-    spotsAvailable: 1
-  },
-  {
-    date: nextShiftDates[2],
-    time: ShiftTime.EARLY_MORNING,
-    role: 'Team Leader',
-    spotsAvailable: 1
-  }
-];
+import { Button } from '../ui/Button';
+import { SHIFT_TIMES } from '../../models/Shift';
+import { getHolidayName } from '../../utils/jewishCalendar';
+import { getUpcomingShifts, signUpForShift } from '../../lib/database';
+import toast from 'react-hot-toast';
 
 export function ShiftSignupPage({ onViewShift }) {
-  const [selectedDate, setSelectedDate] = useState(null);
+  const [shifts, setShifts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadShifts();
+  }, []);
+
+  const loadShifts = async () => {
+    try {
+      const data = await getUpcomingShifts();
+      setShifts(data);
+    } catch (error) {
+      console.error('Error loading shifts:', error);
+      toast.error('Failed to load shifts');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const formatShiftTime = (time) => {
     const times = SHIFT_TIMES[time];
@@ -54,6 +37,25 @@ export function ShiftSignupPage({ onViewShift }) {
     };
     return `${formatTime(times.start)} - ${formatTime(times.end)}`;
   };
+
+  const handleSignup = async (shift) => {
+    try {
+      await signUpForShift(shift.id, shift.role);
+      toast.success(`Successfully signed up for ${format(new Date(shift.date), 'MMMM d')} ${formatShiftTime(shift.time)} shift`);
+      loadShifts(); // Reload shifts to update availability
+    } catch (error) {
+      console.error('Error signing up for shift:', error);
+      toast.error('Failed to sign up for shift');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
 
   return (
     <main className="flex-1 min-w-0 overflow-auto">
@@ -69,20 +71,19 @@ export function ShiftSignupPage({ onViewShift }) {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {UPCOMING_SHIFTS.map((shift, index) => (
-                  <button
-                    key={index}
-                    onClick={() => onViewShift(shift)}
-                    className="w-full p-4 rounded-lg border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-dark-hover transition-colors text-left"
+                {shifts.map((shift) => (
+                  <div
+                    key={shift.id}
+                    className="p-4 rounded-lg border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-dark-hover transition-colors"
                   >
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          {format(shift.date, 'EEEE, MMMM d')}
+                          {format(new Date(shift.date), 'EEEE, MMMM d')}
                         </p>
-                        {getHolidayName(shift.date) && (
+                        {getHolidayName(new Date(shift.date)) && (
                           <p className="text-sm text-primary">
-                            {getHolidayName(shift.date)}
+                            {getHolidayName(new Date(shift.date))}
                           </p>
                         )}
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -104,7 +105,20 @@ export function ShiftSignupPage({ onViewShift }) {
                         )}
                       </div>
                     </div>
-                  </button>
+                    <div className="flex justify-end gap-2 mt-4">
+                      <Button 
+                        variant="secondary"
+                        onClick={() => onViewShift(shift)}
+                      >
+                        View Details
+                      </Button>
+                      {shift.spotsAvailable > 0 && (
+                        <Button onClick={() => handleSignup(shift)}>
+                          Sign Up
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                 ))}
               </div>
             </CardContent>

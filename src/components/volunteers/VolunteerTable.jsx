@@ -1,6 +1,5 @@
-import React from 'react';
+import { useState } from 'react';
 import { format } from 'date-fns';
-import { Menu } from '@headlessui/react';
 import clsx from 'clsx';
 import { VolunteerDetailsModal } from './VolunteerDetailsModal';
 import { TrainingLevel } from '../../models/Volunteer';
@@ -29,7 +28,7 @@ const TrainingLevelBadge = ({ level }) => {
 };
 
 export function VolunteerTable({ volunteers }) {
-  const [selectedVolunteer, setSelectedVolunteer] = React.useState(null);
+  const [selectedVolunteer, setSelectedVolunteer] = useState(null);
 
   return (
     <>

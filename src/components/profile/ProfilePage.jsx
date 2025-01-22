@@ -1,25 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import toast from 'react-hot-toast';
-import { updateProfile, uploadAvatar } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
+import { getProfile, updateProfile, uploadAvatar } from '../../lib/supabase';
 
 export function ProfilePage() {
-  const { profile } = useAuth();
+  const [profile, setProfile] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState(profile);
+  const [formData, setFormData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
+    try {
+      const data = await getProfile();
+      setProfile(data);
+      setFormData(data);
+    } catch (error) {
+      console.error('Error loading profile:', error);
+      toast.error('Failed to load profile');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const updatedProfile = await updateProfile(formData);
-      setFormData(updatedProfile);
+      setProfile(updatedProfile);
       setIsEditing(false);
       toast.success('Profile updated successfully');
     } catch (error) {
-      toast.error('Error updating profile');
-      console.error('Error:', error);
+      console.error('Error updating profile:', error);
+      toast.error('Failed to update profile');
     }
   };
 
@@ -27,30 +44,30 @@ export function ProfilePage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Photo must be less than 5MB');
-      return;
-    }
-
     try {
       const updatedProfile = await uploadAvatar(file);
+      setProfile(updatedProfile);
       setFormData(updatedProfile);
       toast.success('Photo uploaded successfully');
     } catch (error) {
-      toast.error('Error uploading photo');
-      console.error('Error:', error);
+      console.error('Error uploading photo:', error);
+      toast.error(error.message || 'Failed to upload photo');
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
+
   if (!profile) {
     return (
-      <main className="flex-1 min-w-0 overflow-auto">
-        <div className="max-w-[1440px] mx-auto animate-fade-in p-4">
-          <div className="flex items-center justify-center h-64">
-            <p className="text-gray-500 dark:text-gray-400">Profile not found. Please sign in.</p>
-          </div>
-        </div>
-      </main>
+      <div className="flex items-center justify-center h-64">
+        <p className="text-gray-500 dark:text-gray-400">Profile not found</p>
+      </div>
     );
   }
 

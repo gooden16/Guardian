@@ -1,4 +1,4 @@
-import { format, addDays, isAfter, isBefore, isSaturday } from 'date-fns';
+import { format, addDays, isSaturday } from 'date-fns';
 
 // Helper to check if a date is Shabbat (Saturday)
 export const isShabbat = (date) => {

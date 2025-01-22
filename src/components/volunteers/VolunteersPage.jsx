@@ -1,65 +1,48 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { VolunteerFilters } from './VolunteerFilters';
 import { VolunteerTable } from './VolunteerTable';
 import { AddVolunteerModal } from './AddVolunteerModal';
 import { TrainingLevel } from '../../models/Volunteer';
-
-const initialVolunteers = [
-  {
-    id: '1',
-    name: 'David Cohen',
-    email: 'david@example.com',
-    phone: '(555) 123-4567',
-    trainingLevel: TrainingLevel.TEAM_LEADER,
-    isActive: true,
-    shiftsThisQuarter: 2,
-    lastShift: '2023-12-15',
-    availability: ['SUNDAY']
-  },
-  {
-    id: '2',
-    name: 'Sarah Levy',
-    email: 'sarah@example.com',
-    phone: '(555) 234-5678',
-    trainingLevel: TrainingLevel.LEVEL_1,
-    isActive: true,
-    shiftsThisQuarter: 1,
-    lastShift: '2023-12-08',
-    availability: ['SUNDAY', 'SATURDAY']
-  },
-  {
-    id: '3',
-    name: 'Michael Stern',
-    email: 'michael@example.com',
-    phone: '(555) 345-6789',
-    trainingLevel: TrainingLevel.LEVEL_2,
-    isActive: true,
-    shiftsThisQuarter: 2,
-    lastShift: '2023-12-22',
-    availability: ['SATURDAY']
-  }
-];
+import { getVolunteers } from '../../lib/database';
+import toast from 'react-hot-toast';
 
 export function VolunteersPage() {
-  const [volunteers, setVolunteers] = useState(initialVolunteers);
+  const [volunteers, setVolunteers] = useState([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     search: '',
     trainingLevel: 'all',
     status: 'all'
   });
 
+  useEffect(() => {
+    loadVolunteers();
+  }, []);
+
+  const loadVolunteers = async () => {
+    try {
+      const data = await getVolunteers();
+      setVolunteers(data);
+    } catch (error) {
+      console.error('Error loading volunteers:', error);
+      toast.error('Failed to load volunteers');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAddVolunteer = (newVolunteer) => {
     setVolunteers([...volunteers, { ...newVolunteer, id: crypto.randomUUID() }]);
   };
 
   const filteredVolunteers = volunteers.filter(volunteer => {
-    if (filters.trainingLevel !== 'all' && volunteer.trainingLevel !== filters.trainingLevel) {
+    if (filters.trainingLevel !== 'all' && volunteer.training_level !== filters.trainingLevel) {
       return false;
     }
-    if (filters.status !== 'all' && volunteer.isActive !== (filters.status === 'active')) {
+    if (filters.status !== 'all' && volunteer.is_active !== (filters.status === 'active')) {
       return false;
     }
     if (filters.search) {
@@ -67,11 +50,19 @@ export function VolunteersPage() {
       return (
         volunteer.name.toLowerCase().includes(search) ||
         volunteer.email.toLowerCase().includes(search) ||
-        volunteer.phone.includes(search)
+        volunteer.phone?.includes(search)
       );
     }
     return true;
   });
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
 
   return (
     <main className="flex-1 min-w-0 overflow-auto">
@@ -88,7 +79,7 @@ export function VolunteersPage() {
             <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Team Leaders</h3>
             <p className="mt-2 flex items-baseline gap-2">
               <span className="text-2xl font-semibold text-gray-900 dark:text-white">
-                {volunteers.filter(v => v.trainingLevel === TrainingLevel.TEAM_LEADER && v.isActive).length}
+                {volunteers.filter(v => v.training_level === TrainingLevel.TEAM_LEADER && v.is_active).length}
               </span>
               <span className="text-sm text-gray-500 dark:text-gray-400">active</span>
             </p>
@@ -98,7 +89,7 @@ export function VolunteersPage() {
             <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Level 1 Volunteers</h3>
             <p className="mt-2 flex items-baseline gap-2">
               <span className="text-2xl font-semibold text-gray-900 dark:text-white">
-                {volunteers.filter(v => v.trainingLevel === TrainingLevel.LEVEL_1 && v.isActive).length}
+                {volunteers.filter(v => v.training_level === TrainingLevel.LEVEL_1 && v.is_active).length}
               </span>
               <span className="text-sm text-gray-500 dark:text-gray-400">active</span>
             </p>
@@ -108,7 +99,7 @@ export function VolunteersPage() {
             <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Level 2 Volunteers</h3>
             <p className="mt-2 flex items-baseline gap-2">
               <span className="text-2xl font-semibold text-gray-900 dark:text-white">
-                {volunteers.filter(v => v.trainingLevel === TrainingLevel.LEVEL_2 && v.isActive).length}
+                {volunteers.filter(v => v.training_level === TrainingLevel.LEVEL_2 && v.is_active).length}
               </span>
               <span className="text-sm text-gray-500 dark:text-gray-400">active</span>
             </p>

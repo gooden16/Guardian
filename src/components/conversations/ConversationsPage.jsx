@@ -1,191 +1,91 @@
-import React, { useState } from 'react';
-import { Card, CardHeader, CardContent } from '../ui/Card';
+import { useState, useEffect, useCallback } from 'react';
 import { ConversationsList } from './ConversationsList';
 import { ChatView } from './ChatView';
 import { Button } from '../ui/Button';
-
-// Mock data for conversations
-const initialConversations = {
-  shifts: [
-    {
-      id: 1,
-      type: 'shift',
-      shiftDate: '2024-01-13',
-      shiftTime: 'EARLY_MORNING',
-      participants: [
-        {
-          id: 1,
-          name: 'David Cohen',
-          avatar: 'https://cdn.usegalileo.ai/stability/117a7a12-7704-4917-9139-4a3f76c42e78.png',
-          role: 'Team Leader',
-          status: 'online'
-        },
-        {
-          id: 2,
-          name: 'Sarah Levy',
-          avatar: 'https://cdn.usegalileo.ai/stability/d4e7d763-28f3-4af2-bc57-a26db12c522b.png',
-          role: 'Level 1',
-          status: 'offline'
-        }
-      ],
-      lastMessage: {
-        text: "I'll bring an extra table for setup",
-        timestamp: '2024-01-12T15:30:00Z',
-        unread: true
-      },
-      messages: [
-        {
-          id: 1,
-          type: 'system',
-          text: 'Shift chat started for Saturday Morning Shift (8:35 AM - 10:20 AM)',
-          timestamp: '2024-01-12T10:00:00Z'
-        },
-        {
-          id: 2,
-          type: 'volunteer',
-          sender: {
-            name: 'David Cohen',
-            avatar: 'https://cdn.usegalileo.ai/stability/117a7a12-7704-4917-9139-4a3f76c42e78.png'
-          },
-          text: 'Good morning everyone! Looking forward to working with you tomorrow.',
-          timestamp: '2024-01-12T14:00:00Z'
-        },
-        {
-          id: 3,
-          type: 'volunteer',
-          sender: {
-            name: 'Sarah Levy',
-            avatar: 'https://cdn.usegalileo.ai/stability/d4e7d763-28f3-4af2-bc57-a26db12c522b.png'
-          },
-          text: 'Me too! Do we need to bring anything special?',
-          timestamp: '2024-01-12T14:05:00Z'
-        },
-        {
-          id: 4,
-          type: 'volunteer',
-          sender: {
-            name: 'David Cohen',
-            avatar: 'https://cdn.usegalileo.ai/stability/117a7a12-7704-4917-9139-4a3f76c42e78.png'
-          },
-          text: "I'll bring an extra table for setup",
-          timestamp: '2024-01-12T15:30:00Z'
-        }
-      ]
-    }
-  ],
-  general: [
-    {
-      id: 2,
-      type: 'general',
-      name: 'General Discussion',
-      participants: 45,
-      lastMessage: {
-        text: 'Thanks for organizing the training session!',
-        timestamp: '2024-01-12T16:00:00Z',
-        unread: false
-      },
-      messages: [
-        {
-          id: 1,
-          type: 'volunteer',
-          sender: {
-            name: 'Rachel Gold',
-            avatar: 'https://cdn.usegalileo.ai/stability/e9fdb59b-64bb-4239-8e52-f71e0cfb538e.png'
-          },
-          text: 'Thanks for organizing the training session!',
-          timestamp: '2024-01-12T16:00:00Z'
-        }
-      ]
-    },
-    {
-      id: 3,
-      type: 'general',
-      name: 'Team Leaders',
-      participants: 12,
-      lastMessage: {
-        text: 'New shift procedures document is available',
-        timestamp: '2024-01-12T14:30:00Z',
-        unread: true
-      },
-      messages: [
-        {
-          id: 1,
-          type: 'volunteer',
-          sender: {
-            name: 'Admin',
-            avatar: 'https://cdn.usegalileo.ai/stability/1af7ccee-eb75-4af5-b80e-ee2ec64a79ef.png'
-          },
-          text: 'New shift procedures document is available',
-          timestamp: '2024-01-12T14:30:00Z'
-        }
-      ]
-    }
-  ]
-};
+import { getConversations, sendMessage, subscribeToConversation } from '../../lib/database';
+import toast from 'react-hot-toast';
 
 export function ConversationsPage() {
-  const [conversations, setConversations] = useState(initialConversations);
+  const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
-  const [activeTab, setActiveTab] = useState('shifts'); // 'shifts' or 'general'
+  const [activeTab, setActiveTab] = useState('shifts');
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  const handleSendMessage = (text) => {
+  const loadConversations = useCallback(async () => {
+    try {
+      const data = await getConversations();
+      setConversations(data);
+      
+      // Update selected conversation if it exists
+      if (selectedConversation) {
+        const updated = data.find(c => c.id === selectedConversation.id);
+        if (updated) {
+          setSelectedConversation(updated);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading conversations:', error);
+      toast.error('Failed to load conversations');
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedConversation]);
+
+  useEffect(() => {
+    loadConversations();
+  }, [loadConversations]);
+
+  useEffect(() => {
+    let subscription;
+    if (selectedConversation) {
+      subscription = subscribeToConversation(selectedConversation.id, (newMessage) => {
+        setSelectedConversation(prev => ({
+          ...prev,
+          messages: [...(prev?.messages || []), newMessage]
+        }));
+        loadConversations();
+      });
+    }
+    return () => {
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
+  }, [selectedConversation, loadConversations]);
+
+  const handleSendMessage = async (text) => {
     if (!selectedConversation) return;
 
-    const newMessage = {
-      id: Date.now(),
-      type: 'volunteer',
-      sender: {
-        name: 'You',
-        avatar: 'https://cdn.usegalileo.ai/stability/117a7a12-7704-4917-9139-4a3f76c42e78.png'
-      },
-      text,
-      timestamp: new Date().toISOString()
-    };
-
-    // Update conversations state with the new message
-    const updatedConversations = {
-      ...conversations,
-      [activeTab]: conversations[activeTab].map(conv => {
-        if (conv.id === selectedConversation.id) {
-          return {
-            ...conv,
-            messages: [...conv.messages, newMessage],
-            lastMessage: {
-              text,
-              timestamp: newMessage.timestamp,
-              unread: false
-            }
-          };
-        }
-        return conv;
-      })
-    };
-
-    setConversations(updatedConversations);
-
-    // Update selected conversation to show new message
-    setSelectedConversation({
-      ...selectedConversation,
-      messages: [...selectedConversation.messages, newMessage],
-      lastMessage: {
-        text,
-        timestamp: newMessage.timestamp,
-        unread: false
-      }
-    });
+    try {
+      await sendMessage(selectedConversation.id, text);
+      await loadConversations();
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast.error('Failed to send message');
+    }
   };
 
-  const filteredConversations = conversations[activeTab].filter(conv => {
+  const filteredConversations = conversations.filter(conv => {
+    if (activeTab !== conv.type) return false;
+    
     const searchTerm = searchQuery.toLowerCase();
     if (conv.type === 'shift') {
       return conv.participants.some(p => 
-        p.name.toLowerCase().includes(searchTerm)
+        p.volunteer.name.toLowerCase().includes(searchTerm)
       );
     } else {
       return conv.name.toLowerCase().includes(searchTerm);
     }
   });
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
 
   return (
     <main className="flex-1 min-w-0 overflow-hidden">

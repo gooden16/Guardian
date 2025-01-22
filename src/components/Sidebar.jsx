@@ -1,4 +1,3 @@
-import React from 'react';
 import { House, UsersThree, ChatDots } from './Icons';
 import clsx from 'clsx';
 

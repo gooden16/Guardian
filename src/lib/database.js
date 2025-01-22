@@ -27,7 +27,8 @@ export async function getShiftById(id) {
       assignments:shift_assignments(
         volunteer:profiles(id, name, email, avatar_url, training_level),
         role
-      )
+      ),
+      notes
     `)
     .eq('id', id)
     .single();
@@ -56,9 +57,6 @@ export async function signUpForShift(shiftId, role) {
 
 // Conversations
 export async function getConversations() {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-
   const { data, error } = await supabase
     .from('conversations')
     .select(`
@@ -66,7 +64,7 @@ export async function getConversations() {
       participants:conversation_participants(
         volunteer:profiles(id, name, avatar_url)
       ),
-      messages:messages(
+      messages(
         id,
         text,
         created_at,

@@ -1,8 +1,7 @@
-import React from 'react';
 import { Menu } from '@headlessui/react';
-import { supabase } from '../../lib/supabase';
+import clsx from 'clsx';
 import toast from 'react-hot-toast';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuthContext } from '../../contexts/AuthContext';
 
 const userNavigation = [
   { id: 'profile', name: 'Your Profile', icon: 'user' },
@@ -11,7 +10,7 @@ const userNavigation = [
 ];
 
 export function UserMenu({ onNavigate }) {
-  const { profile } = useAuth();
+  const { profile, signOut } = useAuthContext();
 
   const handleAction = async (action) => {
     if (action === 'profile') {
@@ -20,12 +19,10 @@ export function UserMenu({ onNavigate }) {
       onNavigate('settings');
     } else if (action === 'logout') {
       try {
-        const { error } = await supabase.auth.signOut();
-        if (error) throw error;
-        toast.success('Signed out successfully');
+        await signOut();
       } catch (error) {
-        toast.error('Error signing out');
-        console.error('Error:', error);
+        console.error('Error signing out:', error);
+        toast.error('Failed to sign out');
       }
     }
   };

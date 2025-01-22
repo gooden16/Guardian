@@ -1,5 +1,3 @@
-import React from 'react';
-import { Card, CardHeader, CardContent } from '../ui/Card';
 import { NotificationSettings } from './sections/NotificationSettings';
 
 export function SettingsPage() {

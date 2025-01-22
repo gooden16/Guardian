@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Card, CardHeader, CardContent } from '../../ui/Card';
 import { Button } from '../../ui/Button';
 import toast from 'react-hot-toast';
@@ -19,6 +19,65 @@ const initialSettings = {
   }
 };
 
+const NotificationGroup = ({ title, settings, onChange }) => (
+  <div className="space-y-4">
+    <h3 className="text-sm font-medium text-gray-900 dark:text-white">{title}</h3>
+    <div className="space-y-3">
+      <label className="flex items-center gap-3">
+        <input
+          type="checkbox"
+          checked={settings.shiftReminders}
+          onChange={(e) => onChange({ ...settings, shiftReminders: e.target.checked })}
+          className="checkbox-custom"
+        />
+        <div>
+          <p className="text-sm font-medium text-gray-900 dark:text-white">Shift Reminders</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Receive reminders about your upcoming shifts</p>
+        </div>
+      </label>
+
+      <label className="flex items-center gap-3">
+        <input
+          type="checkbox"
+          checked={settings.shiftUpdates}
+          onChange={(e) => onChange({ ...settings, shiftUpdates: e.target.checked })}
+          className="checkbox-custom"
+        />
+        <div>
+          <p className="text-sm font-medium text-gray-900 dark:text-white">Shift Updates</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Get notified about changes to your shifts</p>
+        </div>
+      </label>
+
+      <label className="flex items-center gap-3">
+        <input
+          type="checkbox"
+          checked={settings.teamMessages}
+          onChange={(e) => onChange({ ...settings, teamMessages: e.target.checked })}
+          className="checkbox-custom"
+        />
+        <div>
+          <p className="text-sm font-medium text-gray-900 dark:text-white">Team Messages</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Receive messages from your team members</p>
+        </div>
+      </label>
+
+      <label className="flex items-center gap-3">
+        <input
+          type="checkbox"
+          checked={settings.adminAnnouncements}
+          onChange={(e) => onChange({ ...settings, adminAnnouncements: e.target.checked })}
+          className="checkbox-custom"
+        />
+        <div>
+          <p className="text-sm font-medium text-gray-900 dark:text-white">Admin Announcements</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Get important announcements from administrators</p>
+        </div>
+      </label>
+    </div>
+  </div>
+);
+
 export function NotificationSettings() {
   const [settings, setSettings] = useState(initialSettings);
 
@@ -26,65 +85,6 @@ export function NotificationSettings() {
     e.preventDefault();
     toast.success('Notification settings updated successfully');
   };
-
-  const NotificationGroup = ({ title, type, settings, onChange }) => (
-    <div className="space-y-4">
-      <h3 className="text-sm font-medium text-gray-900 dark:text-white">{title}</h3>
-      <div className="space-y-3">
-        <label className="flex items-center gap-3">
-          <input
-            type="checkbox"
-            checked={settings.shiftReminders}
-            onChange={(e) => onChange({ ...settings, shiftReminders: e.target.checked })}
-            className="checkbox-custom"
-          />
-          <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-white">Shift Reminders</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Receive reminders about your upcoming shifts</p>
-          </div>
-        </label>
-
-        <label className="flex items-center gap-3">
-          <input
-            type="checkbox"
-            checked={settings.shiftUpdates}
-            onChange={(e) => onChange({ ...settings, shiftUpdates: e.target.checked })}
-            className="checkbox-custom"
-          />
-          <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-white">Shift Updates</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Get notified about changes to your shifts</p>
-          </div>
-        </label>
-
-        <label className="flex items-center gap-3">
-          <input
-            type="checkbox"
-            checked={settings.teamMessages}
-            onChange={(e) => onChange({ ...settings, teamMessages: e.target.checked })}
-            className="checkbox-custom"
-          />
-          <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-white">Team Messages</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Receive messages from your team members</p>
-          </div>
-        </label>
-
-        <label className="flex items-center gap-3">
-          <input
-            type="checkbox"
-            checked={settings.adminAnnouncements}
-            onChange={(e) => onChange({ ...settings, adminAnnouncements: e.target.checked })}
-            className="checkbox-custom"
-          />
-          <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-white">Admin Announcements</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Get important announcements from administrators</p>
-          </div>
-        </label>
-      </div>
-    </div>
-  );
 
   return (
     <Card>
@@ -95,7 +95,6 @@ export function NotificationSettings() {
         <form onSubmit={handleSubmit} className="space-y-8">
           <NotificationGroup
             title="Email Notifications"
-            type="email"
             settings={settings.emailNotifications}
             onChange={(newSettings) => setSettings({ ...settings, emailNotifications: newSettings })}
           />
@@ -115,7 +114,6 @@ export function NotificationSettings() {
 
           <NotificationGroup
             title="Push Notifications"
-            type="push"
             settings={settings.pushNotifications}
             onChange={(newSettings) => setSettings({ ...settings, pushNotifications: newSettings })}
           />
