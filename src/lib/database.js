@@ -5,7 +5,9 @@ export async function getUpcomingShifts() {
   const { data, error } = await supabase
     .from('shifts')
     .select(`
-      *,
+      id,
+      date,
+      time,
       assignments:shift_assignments(
         volunteer:profiles(id, name, email, avatar_url, training_level),
         role
@@ -16,7 +18,35 @@ export async function getUpcomingShifts() {
     .order('time', { ascending: true });
 
   if (error) throw error;
-  return data;
+
+  // Transform the data to include spots available
+  return data.map(shift => {
+    const assignments = shift.assignments || [];
+    const teamLeaders = assignments.filter(a => a.role === 'TEAM_LEADER').length;
+    const level1 = assignments.filter(a => a.role === 'LEVEL_1').length;
+    const level2 = assignments.filter(a => a.role === 'LEVEL_2').length;
+
+    // Calculate available spots based on role requirements
+    let spotsAvailable = 0;
+    let role = null;
+
+    if (teamLeaders < 1) {
+      spotsAvailable = 1;
+      role = 'TEAM_LEADER';
+    } else if (level1 < 2) {
+      spotsAvailable = 2 - level1;
+      role = 'LEVEL_1';
+    } else if (level2 < 1) {
+      spotsAvailable = 1;
+      role = 'LEVEL_2';
+    }
+
+    return {
+      ...shift,
+      spotsAvailable,
+      role
+    };
+  });
 }
 
 export async function getShiftById(id) {
@@ -38,15 +68,28 @@ export async function getShiftById(id) {
 }
 
 export async function signUpForShift(shiftId, role) {
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError) throw userError;
   if (!user) throw new Error('Not authenticated');
 
+  // First check if user is already signed up for this shift
+  const { data: existingAssignment, error: checkError } = await supabase
+    .from('shift_assignments')
+    .select('id')
+    .eq('shift_id', shiftId)
+    .eq('volunteer_id', user.id)
+    .maybeSingle();
+
+  if (checkError) throw checkError;
+  if (existingAssignment) throw new Error('Already signed up for this shift');
+
+  // Create the assignment
   const { data, error } = await supabase
     .from('shift_assignments')
     .insert({
       shift_id: shiftId,
       volunteer_id: user.id,
-      role
+      role: role
     })
     .select()
     .single();

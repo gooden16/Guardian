@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 export function Dashboard({ onViewShift }) {
   const [shifts, setShifts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [signingUp, setSigningUp] = useState(false);
 
   useEffect(() => {
     loadShifts();
@@ -30,13 +31,18 @@ export function Dashboard({ onViewShift }) {
   };
 
   const handleSignup = async (shift) => {
+    if (signingUp) return;
+    
     try {
+      setSigningUp(true);
       await signUpForShift(shift.id, shift.role);
       toast.success(`Successfully signed up for ${format(new Date(shift.date), 'MMMM d')} shift`);
       loadShifts(); // Reload shifts to update availability
     } catch (error) {
       console.error('Error signing up for shift:', error);
-      toast.error('Failed to sign up for shift');
+      toast.error(error.message || 'Failed to sign up for shift');
+    } finally {
+      setSigningUp(false);
     }
   };
 
@@ -88,9 +94,13 @@ export function Dashboard({ onViewShift }) {
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white">
-                              {shift.role}
-                            </p>
+                            {shift.role && (
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                {shift.role.split('_').map(word => 
+                                  word.charAt(0) + word.slice(1).toLowerCase()
+                                ).join(' ')}
+                              </p>
+                            )}
                             {shift.spotsAvailable > 0 ? (
                               <p className="text-sm text-green-600 dark:text-green-400">
                                 {shift.spotsAvailable} spot{shift.spotsAvailable !== 1 ? 's' : ''} available
@@ -110,8 +120,11 @@ export function Dashboard({ onViewShift }) {
                             View Details
                           </Button>
                           {shift.spotsAvailable > 0 && (
-                            <Button onClick={() => handleSignup(shift)}>
-                              Sign Up
+                            <Button 
+                              onClick={() => handleSignup(shift)}
+                              disabled={signingUp}
+                            >
+                              {signingUp ? 'Signing up...' : 'Sign Up'}
                             </Button>
                           )}
                         </div>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Card, CardHeader, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { SHIFT_TIMES } from '../../models/Shift';
+import { ShiftTime } from '../../models/Shift';
 import { getHolidayName } from '../../utils/jewishCalendar';
 import { getUpcomingShifts, signUpForShift } from '../../lib/database';
 import toast from 'react-hot-toast';
@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 export function ShiftSignupPage({ onViewShift }) {
   const [shifts, setShifts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [signingUp, setSigningUp] = useState(false);
 
   useEffect(() => {
     loadShifts();
@@ -28,24 +29,26 @@ export function ShiftSignupPage({ onViewShift }) {
   };
 
   const formatShiftTime = (time) => {
-    const times = SHIFT_TIMES[time];
-    const formatTime = (timeStr) => {
-      const [hours, minutes] = timeStr.split(':');
-      const period = hours >= 12 ? 'PM' : 'AM';
-      const hour = hours % 12 || 12;
-      return `${hour}:${minutes} ${period}`;
+    const times = {
+      [ShiftTime.EARLY_MORNING]: { start: '8:35 AM', end: '10:20 AM' },
+      [ShiftTime.LATE_MORNING]: { start: '10:10 AM', end: '12:00 PM' }
     };
-    return `${formatTime(times.start)} - ${formatTime(times.end)}`;
+    return `${times[time].start} - ${times[time].end}`;
   };
 
   const handleSignup = async (shift) => {
+    if (signingUp) return;
+    
     try {
+      setSigningUp(true);
       await signUpForShift(shift.id, shift.role);
-      toast.success(`Successfully signed up for ${format(new Date(shift.date), 'MMMM d')} ${formatShiftTime(shift.time)} shift`);
+      toast.success(`Successfully signed up for ${format(new Date(shift.date), 'MMMM d')} shift`);
       loadShifts(); // Reload shifts to update availability
     } catch (error) {
       console.error('Error signing up for shift:', error);
-      toast.error('Failed to sign up for shift');
+      toast.error(error.message || 'Failed to sign up for shift');
+    } finally {
+      setSigningUp(false);
     }
   };
 
@@ -91,9 +94,13 @@ export function ShiftSignupPage({ onViewShift }) {
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          {shift.role}
-                        </p>
+                        {shift.role && (
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {shift.role.split('_').map(word => 
+                              word.charAt(0) + word.slice(1).toLowerCase()
+                            ).join(' ')}
+                          </p>
+                        )}
                         {shift.spotsAvailable > 0 ? (
                           <p className="text-sm text-green-600 dark:text-green-400">
                             {shift.spotsAvailable} spot{shift.spotsAvailable !== 1 ? 's' : ''} available
@@ -113,8 +120,11 @@ export function ShiftSignupPage({ onViewShift }) {
                         View Details
                       </Button>
                       {shift.spotsAvailable > 0 && (
-                        <Button onClick={() => handleSignup(shift)}>
-                          Sign Up
+                        <Button 
+                          onClick={() => handleSignup(shift)}
+                          disabled={signingUp}
+                        >
+                          {signingUp ? 'Signing up...' : 'Sign Up'}
                         </Button>
                       )}
                     </div>

@@ -1,25 +1,43 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from './components/ui/Header';
 import Sidebar from './components/Sidebar';
-import { Dashboard } from './components/Dashboard';
-import { VolunteersPage } from './components/volunteers/VolunteersPage';
-import { ShiftSignupPage } from './components/volunteers/ShiftSignupPage';
-import { ShiftDetailPage } from './components/volunteers/ShiftDetailPage';
-import { ConversationsPage } from './components/conversations/ConversationsPage';
-import { ProfilePage } from './components/profile/ProfilePage';
-import { SettingsPage } from './components/settings/SettingsPage';
-import { AuthPage } from './components/auth/AuthPage';
+import { Dashboard } from './components/Dashboard.jsx';
+import { VolunteersPage } from './components/volunteers/VolunteersPage.jsx';
+import { ShiftSignupPage } from './components/volunteers/ShiftSignupPage.jsx';
+import { ShiftDetailPage } from './components/volunteers/ShiftDetailPage.jsx';
+import { ConversationsPage } from './components/conversations/ConversationsPage.jsx';
+import { ProfilePage } from './components/profile/ProfilePage.jsx';
+import { SettingsPage } from './components/settings/SettingsPage.jsx';
+import { AuthPage } from './components/auth/AuthPage.jsx';
 import { MobileMenu } from './components/ui/MobileMenu';
 import { useAuthContext } from './contexts/AuthContext';
 
 export default function App() {
-  const { user, profile, loading } = useAuthContext();
+  const { user, profile, loading, initialized } = useAuthContext();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [selectedShift, setSelectedShift] = useState(null);
 
-  // Show loading state
-  if (loading) {
+  // Handle navigation from sidebar
+  const handleMenuItemClick = (page) => {
+    setCurrentPage(page);
+    setIsSidebarOpen(false);
+  };
+
+  // Show loading state for max 5 seconds to prevent infinite loading
+  const [showLoading, setShowLoading] = useState(true);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowLoading(false);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Debug log to help identify where we're getting stuck
+  console.log('Auth State:', { loading, initialized, user, profile, showLoading });
+
+  // Only show loading state if auth is not initialized and loading is true
+  if (!initialized && loading && showLoading) {
     return (
       <div className="fixed inset-0 bg-gray-50 dark:bg-dark-bg flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
@@ -27,15 +45,10 @@ export default function App() {
     );
   }
 
-  // Show auth page if not authenticated
+  // Show auth page if not authenticated or no profile
   if (!user || !profile) {
     return <AuthPage />;
   }
-
-  const handleMenuItemClick = (page) => {
-    setCurrentPage(page);
-    setIsSidebarOpen(false);
-  };
 
   const handleViewShift = (shift) => {
     setSelectedShift(shift);
@@ -50,21 +63,23 @@ export default function App() {
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <Dashboard onViewShift={handleViewShift} />;
-      case 'volunteers':
-        return <VolunteersPage />;
+        return <Dashboard onViewShift={handleViewShift} key="dashboard" />;
       case 'shift-signup':
         return <ShiftSignupPage onViewShift={handleViewShift} />;
+      case 'volunteers':
+        return <VolunteersPage key="volunteers" />;
+      case 'shift-signup':
+        return <ShiftSignupPage onViewShift={handleViewShift} key="shift-signup" />;
       case 'shift-detail':
-        return <ShiftDetailPage shift={selectedShift} onBack={handleBackToShifts} />;
+        return <ShiftDetailPage shift={selectedShift} onBack={handleBackToShifts} key="shift-detail" />;
       case 'conversations':
-        return <ConversationsPage />;
+        return <ConversationsPage key="conversations" />;
       case 'profile':
-        return <ProfilePage />;
+        return <ProfilePage key="profile" />;
       case 'settings':
-        return <SettingsPage />;
+        return <SettingsPage key="settings" />;
       default:
-        return <Dashboard onViewShift={handleViewShift} />;
+        return <Dashboard onViewShift={handleViewShift} key="dashboard-default" />;
     }
   };
 

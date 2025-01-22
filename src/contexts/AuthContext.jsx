@@ -4,10 +4,8 @@ import toast from 'react-hot-toast';
 import { logger } from '../utils/logger';
 import { AuthError, ErrorCodes, getErrorMessage } from '../utils/errors';
 
-// Create context
 const AuthContext = createContext(null);
 
-// Export useAuthContext hook
 export function useAuthContext() {
   const context = useContext(AuthContext);
   if (!context) {
@@ -16,13 +14,13 @@ export function useAuthContext() {
   return context;
 }
 
-// Export AuthProvider
 export function AuthProvider({ children }) {
   const [state, setState] = useState({
     user: null,
     profile: null,
     loading: true,
-    initialized: false
+    initialized: false,
+    error: null
   });
 
   const handleAuthError = useCallback((error, code = ErrorCodes.AUTH_UNKNOWN_ERROR) => {
@@ -32,13 +30,37 @@ export function AuthProvider({ children }) {
       originalError: error
     });
     
-    toast.error(getErrorMessage(code));
-    
     setState(prev => ({
       ...prev,
       loading: false,
-      initialized: true
+      initialized: true,
+      error: authError
     }));
+  }, []);
+
+  const loadProfile = useCallback(async (userId) => {
+    try {
+      logger.debug('Loading profile', { userId });
+      
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (profileError) {
+        throw new AuthError(
+          'Failed to fetch profile',
+          ErrorCodes.PROFILE_NOT_FOUND,
+          profileError
+        );
+      }
+
+      return profile;
+    } catch (error) {
+      logger.error('Error loading profile', error);
+      throw error;
+    }
   }, []);
 
   const signOut = useCallback(async () => {
@@ -56,7 +78,8 @@ export function AuthProvider({ children }) {
         user: null,
         profile: null,
         loading: false,
-        initialized: true
+        initialized: true,
+        error: null
       });
       
       logger.info('User signed out successfully');
@@ -66,63 +89,76 @@ export function AuthProvider({ children }) {
     }
   }, [state.user?.id, handleAuthError]);
 
-  // Initialize auth state
   useEffect(() => {
     let mounted = true;
+    let initTimeout;
 
     async function initialize() {
       try {
         logger.info('Initializing authentication');
         
+        // Set a timeout to prevent infinite loading
+        initTimeout = setTimeout(() => {
+          if (mounted && state.loading) {
+            setState(prev => ({
+              ...prev,
+              loading: false,
+              initialized: true,
+              error: new Error('Authentication initialization timed out')
+            }));
+          }
+        }, 5000);
+
         // Get initial session
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
-        if (error) {
+        if (sessionError) {
           throw new AuthError(
             'Failed to get session',
             ErrorCodes.SESSION_INVALID,
-            error
+            sessionError
           );
         }
 
-        if (session?.user && mounted) {
-          logger.debug('Session found, fetching profile', { userId: session.user.id });
-          
-          // Fetch profile
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .maybeSingle();
+        if (!mounted) return;
 
-          if (profileError) {
-            throw new AuthError(
-              'Failed to fetch profile',
-              ErrorCodes.PROFILE_NOT_FOUND,
-              profileError
-            );
-          }
-
-          if (mounted) {
-            setState({
-              user: session.user,
-              profile,
-              loading: false,
-              initialized: true
-            });
-          }
-        } else if (mounted) {
+        if (!session?.user) {
           logger.debug('No active session found');
-          
           setState({
             user: null,
             profile: null,
             loading: false,
-            initialized: true
+            initialized: true,
+            error: null
           });
+          return;
         }
+
+        logger.debug('Session found, loading profile', { userId: session.user.id });
+        
+        // Load profile
+        const profile = await loadProfile(session.user.id);
+
+        if (!mounted) return;
+
+        setState({
+          user: session.user,
+          profile,
+          loading: false,
+          initialized: true,
+          error: null
+        });
+        
+        logger.debug('Auth initialized with user', { userId: session.user.id });
+
       } catch (error) {
-        handleAuthError(error);
+        if (mounted) {
+          handleAuthError(error);
+        }
+      } finally {
+        if (initTimeout) {
+          clearTimeout(initTimeout);
+        }
       }
     }
 
@@ -136,48 +172,41 @@ export function AuthProvider({ children }) {
         logger.info('Auth state changed', { event });
 
         try {
-          if (session?.user) {
-            setState(prev => ({ ...prev, loading: true }));
-
-            const { data: profile, error: profileError } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .maybeSingle();
-
-            if (profileError) {
-              throw new AuthError(
-                'Failed to fetch profile',
-                ErrorCodes.PROFILE_NOT_FOUND,
-                profileError
-              );
-            }
-
-            if (mounted) {
-              logger.info('Auth state updated successfully', {
-                userId: session.user.id,
-                event
-              });
-              
-              setState({
-                user: session.user,
-                profile,
-                loading: false,
-                initialized: true
-              });
-            }
-          } else if (mounted) {
+          if (!session?.user) {
             logger.info('User signed out', { event });
-            
             setState({
               user: null,
               profile: null,
               loading: false,
-              initialized: true
+              initialized: true,
+              error: null
             });
+            return;
           }
+
+          setState(prev => ({ ...prev, loading: true }));
+
+          // Load profile
+          const profile = await loadProfile(session.user.id);
+
+          if (!mounted) return;
+
+          logger.info('Auth state updated successfully', {
+            userId: session.user.id,
+            event
+          });
+          
+          setState({
+            user: session.user,
+            profile,
+            loading: false,
+            initialized: true,
+            error: null
+          });
         } catch (error) {
-          handleAuthError(error);
+          if (mounted) {
+            handleAuthError(error);
+          }
         }
       }
     );
@@ -185,14 +214,12 @@ export function AuthProvider({ children }) {
     return () => {
       logger.debug('Cleaning up auth subscriptions');
       mounted = false;
+      if (initTimeout) {
+        clearTimeout(initTimeout);
+      }
       subscription?.unsubscribe();
     };
-  }, [handleAuthError]);
-
-  // Don't render anything until we've initialized
-  if (!state.initialized) {
-    return null;
-  }
+  }, [handleAuthError, loadProfile]);
 
   return (
     <AuthContext.Provider value={{ ...state, signOut }}>

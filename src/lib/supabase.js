@@ -7,33 +7,38 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: false,
+    storage: localStorage,
+    storageKey: 'css-guardian-auth',
+    flowType: 'pkce'
   }
 });
 
-// Profile functions
 export async function getProfile() {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError) throw userError;
     if (!user) throw new Error('Not authenticated');
 
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', user.id)
-      .maybeSingle();
+      .single();
 
     if (error) throw error;
     return data;
   } catch (error) {
-    console.error('Error fetching profile:', error);
+    console.error('Error getting profile:', error);
     throw error;
   }
 }
 
 export async function updateProfile(updates) {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError) throw userError;
     if (!user) throw new Error('Not authenticated');
 
     const { data, error } = await supabase
@@ -53,10 +58,11 @@ export async function updateProfile(updates) {
 
 export async function uploadAvatar(file) {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError) throw userError;
     if (!user) throw new Error('Not authenticated');
 
-    // Validate file size
+    // Validate file size (5MB limit)
     if (file.size > 5 * 1024 * 1024) {
       throw new Error('File size must be less than 5MB');
     }
@@ -69,19 +75,19 @@ export async function uploadAvatar(file) {
     const fileExt = file.name.split('.').pop();
     const filePath = `${user.id}/avatar.${fileExt}`;
 
-    // Upload the file
+    // Upload file
     const { error: uploadError } = await supabase.storage
       .from('avatars')
       .upload(filePath, file, { upsert: true });
 
     if (uploadError) throw uploadError;
 
-    // Get the public URL
+    // Get public URL
     const { data: { publicUrl } } = supabase.storage
       .from('avatars')
       .getPublicUrl(filePath);
 
-    // Update profile with new avatar URL
+    // Update profile
     const { data, error: updateError } = await supabase
       .from('profiles')
       .update({ avatar_url: publicUrl })

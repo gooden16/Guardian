@@ -13,7 +13,6 @@ export function SignInPage({ onToggleAuth }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
     if (loading) return;
     
     try {
@@ -26,7 +25,6 @@ export function SignInPage({ onToggleAuth }) {
 
       if (error) throw error;
 
-      toast.success('Signed in successfully');
     } catch (error) {
       console.error('Sign in error:', error);
       toast.error(error.message);
@@ -84,7 +82,7 @@ export function SignInPage({ onToggleAuth }) {
             </Button>
 
             <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-              Don&apos;t have an account?{' '}
+              Don't have an account?{' '}
               <button
                 type="button"
                 onClick={onToggleAuth}
