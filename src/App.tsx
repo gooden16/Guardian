@@ -4,6 +4,8 @@ import { AuthProvider } from './contexts/AuthContext';
 import { Layout } from './components/Layout';
 import { AuthPage } from './pages/AuthPage';
 import { ShiftListPage } from './pages/ShiftListPage';
+import { ShiftDetailPage } from './pages/ShiftDetailPage';
+import { ProfilePage } from './pages/ProfilePage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
@@ -19,6 +21,22 @@ function App() {
               element={
                 <ProtectedRoute>
                   <ShiftListPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/shifts/:id"
+              element={
+                <ProtectedRoute>
+                  <ShiftDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <ProfilePage />
                 </ProtectedRoute>
               }
             />
