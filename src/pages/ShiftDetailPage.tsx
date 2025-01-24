@@ -4,6 +4,7 @@ import { ArrowLeft, Bell, Phone, UserCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/database.types';
+import { ShiftService, ShiftWithCounts } from '../services/ShiftService';
 
 type ShiftWithAssignments = Database['public']['Tables']['shifts']['Row'] & {
   shift_assignments: Array<{
@@ -21,34 +22,16 @@ type ShiftWithAssignments = Database['public']['Tables']['shifts']['Row'] & {
 
 export function ShiftDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const [shift, setShift] = useState<ShiftWithAssignments | null>(null);
+  const [shift, setShift] = useState<ShiftWithCounts | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadShiftDetails() {
       try {
-        const { data, error } = await supabase
-          .from('shifts')
-          .select(`
-            *,
-            shift_assignments(
-              id,
-              user_id,
-              role,
-              profiles(
-                first_name,
-                last_name,
-                avatar_url,
-                phone_number
-              )
-            )
-          `)
-          .eq('id', id)
-          .single();
-
-        if (error) throw error;
-        setShift(data as ShiftWithAssignments);
+        if (!id) return;
+        const shiftData = await ShiftService.getShiftWithCounts(id);
+        setShift(shiftData);
       } catch (err) {
         console.error('Error loading shift details:', err);
         setError(err instanceof Error ? err.message : 'Failed to load shift details');
@@ -57,9 +40,7 @@ export function ShiftDetailPage() {
       }
     }
 
-    if (id) {
-      loadShiftDetails();
-    }
+    loadShiftDetails();
   }, [id]);
 
   if (loading) {
