@@ -7,6 +7,7 @@ import AuthModal from './AuthModal';
 const Navigation = () => {
   const { user, signOut } = useAuth();
   const [showAuthModal, setShowAuthModal] = React.useState(false);
+  const [isSigningOut, setIsSigningOut] = React.useState(false);
 
   const navItems = [
     { to: '/', icon: Home, label: 'Dashboard' },
@@ -39,11 +40,30 @@ const Navigation = () => {
         
         {user ? (
           <button
-            onClick={() => signOut()}
-            className="flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+            onClick={async () => {
+              try {
+                setIsSigningOut(true);
+                await signOut();
+              } catch (error) {
+                console.error('Failed to sign out:', error);
+              } finally {
+                setIsSigningOut(false);
+              }
+            }}
+            disabled={isSigningOut}
+            className="flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-50"
           >
-            <LogOut className="h-4 w-4" />
-            <span>Sign Out</span>
+            {isSigningOut ? (
+              <>
+                <div className="h-4 w-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
+                <span>Signing Out...</span>
+              </>
+            ) : (
+              <>
+                <LogOut className="h-4 w-4" />
+                <span>Sign Out</span>
+              </>
+            )}
           </button>
         ) : (
           <button

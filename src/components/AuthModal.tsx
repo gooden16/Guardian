@@ -16,12 +16,14 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string>('');
   
   const { signIn, signUp } = useAuth();
 
   if (!isOpen) return null;
 
   function parseError(err: unknown): string {
+    console.error('Auth error:', err);
     if (err instanceof Error) return err.message;
     if (typeof err === 'object' && err !== null) {
       const errorObj = err as { message?: string };
@@ -45,15 +47,21 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     }
     
     setLoading(true);
+    setDebugInfo('');
 
     try {
+      setDebugInfo('Starting authentication...');
       if (isSignUp) {
+        setDebugInfo('Attempting sign up...');
         await signUp(email, password, firstName, lastInitial);
       } else {
+        setDebugInfo('Attempting sign in...');
         await signIn(email, password);
       }
+      setDebugInfo('Authentication successful!');
       onClose();
     } catch (err) {
+      setDebugInfo(`Auth failed: ${JSON.stringify(err)}`);
       setError(parseError(err));
     } finally {
       setLoading(false);
@@ -142,10 +150,16 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           <button
             type="submit"
             disabled={loading || cooldown}
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 mb-4"
           >
             {loading ? 'Loading...' : cooldown ? 'Please wait...' : isSignUp ? 'Create Account' : 'Sign In'}
           </button>
+          
+          {process.env.NODE_ENV === 'development' && debugInfo && (
+            <div className="text-xs text-gray-500 mt-2 p-2 bg-gray-50 rounded">
+              <pre className="whitespace-pre-wrap">{debugInfo}</pre>
+            </div>
+          )}
 
           <div className="text-sm text-center">
             {isSignUp ? (

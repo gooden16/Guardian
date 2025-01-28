@@ -1,7 +1,45 @@
 import { createClient } from '@supabase/supabase-js';
 import { Database } from './database.types';
 
-const supabaseUrl = 'https://rwseebtsdokwdogbvswk.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3c2VlYnRzZG9rd2RvZ2J2c3drIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzc5MjUwMzAsImV4cCI6MjA1MzUwMTAzMH0.sL1Z0KAAWCh_uVB2bCSzYPh8fwgnqTmi9YGjCvrr584';
+console.log('Initializing Supabase client...');
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseKey);
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+console.log('Supabase URL present:', !!supabaseUrl);
+console.log('Supabase key present:', !!supabaseKey);
+
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('Missing Supabase environment variables');
+}
+
+const clientOptions = {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storageKey: 'shift-scheduler-auth',
+    storage: {
+      getItem: (key: string) => {
+        const value = window.localStorage.getItem(key);
+        console.log('Auth storage get:', { key, value: value ? 'present' : 'missing' });
+        return value;
+      },
+      setItem: (key: string, value: string) => {
+        console.log('Auth storage set:', { key, value: value ? 'present' : 'missing' });
+        window.localStorage.setItem(key, value);
+      },
+      removeItem: (key: string) => {
+        console.log('Auth storage remove:', { key });
+        window.localStorage.removeItem(key);
+      }
+    }
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'shift-scheduler'
+    }
+  }
+};
+
+export const supabase = createClient<Database>(supabaseUrl, supabaseKey, clientOptions);
