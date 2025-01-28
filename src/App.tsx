@@ -1,11 +1,21 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Calendar } from 'lucide-react';
+import { supabase } from './lib/supabase';
 import Dashboard from './pages/Dashboard';
 import ShiftCalendar from './pages/ShiftCalendar';
 import Profile from './pages/Profile';
 import AdminPanel from './pages/AdminPanel';
 import Navigation from './components/Navigation';
+
+// Verify Supabase connection
+supabase.from('volunteers').select('count').single().then(({ data, error }) => {
+  if (error) {
+    console.error('Supabase connection error:', error);
+  } else {
+    console.log('Supabase connection successful:', data);
+  }
+});
 
 function App() {
   return (
