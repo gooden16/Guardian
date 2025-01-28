@@ -3,11 +3,12 @@ import {
   Users,
   Calendar as CalendarIcon,
   Download,
-  UserPlus,
   Search,
   AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { generateShifts } from '../lib/shifts';
 import type { Database } from '../lib/database.types';
 
 type Volunteer = Database['public']['Tables']['volunteers']['Row'];
@@ -19,10 +20,25 @@ const AdminPanel = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'volunteers' | 'shifts'>('volunteers');
+  const [generating, setGenerating] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      
+      // Check if current user is admin
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: volunteer } = await supabase
+          .from('volunteers')
+          .select('*')
+          .eq('auth_user_id', user.id);
+        
+        if (volunteer && volunteer.length > 0) {
+          setIsAdmin(volunteer[0].is_admin);
+        }
+      }
       
       const [volunteersResponse, shiftsResponse] = await Promise.all([
         supabase.from('volunteers').select('*').order('created_at', { ascending: false }),
@@ -64,6 +80,32 @@ const AdminPanel = () => {
     document.body.removeChild(link);
   };
 
+  const handleGenerateShifts = async () => {
+    setGenerating(true);
+    try {
+      // Generate shifts for the next 3 months
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setMonth(endDate.getMonth() + 3);
+      
+      await generateShifts(startDate, endDate);
+      
+      // Refresh shifts data
+      const { data } = await supabase
+        .from('shifts')
+        .select('*')
+        .order('date', { ascending: false })
+        .limit(50);
+      
+      if (data) setShifts(data);
+    } catch (error) {
+      console.error('Error generating shifts:', error);
+      alert('Failed to generate shifts. Please try again.');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -76,13 +118,25 @@ const AdminPanel = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Admin Panel</h2>
-        <button
-          onClick={exportData}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-        >
-          <Download className="h-4 w-4 mr-2" />
-          Export {activeTab}
-        </button>
+        <div className="flex items-center space-x-4">
+          {isAdmin && (
+            <button
+              onClick={handleGenerateShifts}
+              disabled={generating}
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${generating ? 'animate-spin' : ''}`} />
+              Generate Shifts
+            </button>
+          )}
+          <button
+            onClick={exportData}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export {activeTab}
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
