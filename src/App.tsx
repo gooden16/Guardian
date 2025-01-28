@@ -1,49 +1,38 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
-import { Layout } from './components/Layout';
-import { AuthPage } from './pages/AuthPage';
-import { ShiftListPage } from './pages/ShiftListPage';
-import { ShiftDetailPage } from './pages/ShiftDetailPage';
-import { ProfilePage } from './pages/ProfilePage';
-import { ProtectedRoute } from './components/ProtectedRoute';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Calendar } from 'lucide-react';
+import Dashboard from './pages/Dashboard';
+import ShiftCalendar from './pages/ShiftCalendar';
+import Profile from './pages/Profile';
+import AdminPanel from './pages/AdminPanel';
+import Navigation from './components/Navigation';
 
 function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          <Route path="/auth" element={<AuthPage />} />
-          <Route element={<Layout />}>
-            <Route index element={<Navigate to="/shifts" replace />} />
-            <Route
-              path="/shifts"
-              element={
-                <ProtectedRoute>
-                  <ShiftListPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/shifts/:id"
-              element={
-                <ProtectedRoute>
-                  <ShiftDetailPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <ProfilePage />
-                </ProtectedRoute>
-              }
-            />
-          </Route>
-        </Routes>
-      </AuthProvider>
-    </BrowserRouter>
+    <Router>
+      <div className="min-h-screen bg-gray-100">
+        <header className="bg-white shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Calendar className="h-8 w-8 text-blue-600" />
+                <h1 className="text-2xl font-bold text-gray-900">CSS Shift Scheduler</h1>
+              </div>
+              <Navigation />
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/shifts" element={<ShiftCalendar />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/admin" element={<AdminPanel />} />
+          </Routes>
+        </main>
+      </div>
+    </Router>
   );
 }
 
