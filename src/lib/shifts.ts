@@ -1,54 +1,150 @@
-import { HebrewCalendar, HDate, Event } from '@hebcal/core';
 import { supabase } from './supabase';
-import { isShabbat, isMajorHoliday, getHolidayName } from './hebcal';
+import type { Shift, ShiftVolunteer } from '../types/shift';
 
-export async function generateShifts(startDate: Date, endDate: Date) {
-  const dates = [];
-  let currentDate = new Date(startDate);
+export function formatDateForDB(dateStr: string): string {
+  // Ensure date is in YYYY-MM-DD format
+  const date = new Date(dateStr);
+  return date.toISOString().split('T')[0];
+}
 
-  while (currentDate <= endDate) {
-    if (isShabbat(currentDate) || isMajorHoliday(currentDate)) {
-      dates.push(new Date(currentDate));
-    }
-    currentDate.setDate(currentDate.getDate() + 1);
+async function ensureShiftsExist(startDate: Date, endDate: Date): Promise<void> {
+  const { data, error } = await supabase
+    .rpc('ensure_shifts_exist', {
+      start_date: formatDateForDB(startDate.toISOString()),
+      end_date: formatDateForDB(endDate.toISOString())
+    });
+
+  if (error) throw error;
+}
+
+export async function getUserShifts(): Promise<Shift[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) return [];
+
+  const { data: shifts, error } = await supabase
+    .from('shifts')
+    .select(`
+      id,
+      date,
+      type,
+      shift_volunteers (
+        id,
+        user_id,
+        profiles:user_id (
+          first_name,
+          last_name,
+          role
+        )
+      )
+    `)
+    .gte('date', new Date().toISOString().split('T')[0])
+    .order('date', { ascending: true });
+
+  if (error) throw error;
+  if (!shifts) return [];
+
+  return shifts
+    .map(shift => ({
+      id: shift.id,
+      date: shift.date,
+      type: shift.type,
+      volunteers: (shift.shift_volunteers || []).map((sv: any) => ({
+        id: sv.user_id,
+        role: sv.profiles.role,
+        name: `${sv.profiles.first_name} ${sv.profiles.last_name}`
+      }))
+    }))
+    .filter(shift => shift.volunteers.some(v => v.id === user.id));
+}
+export async function getShifts(startDate: Date, endDate: Date): Promise<Shift[]> {
+  // Ensure shifts exist for the date range before querying
+  await ensureShiftsExist(startDate, endDate);
+
+  const { data: shifts, error } = await supabase
+    .from('shifts')
+    .select(`
+      id,
+      date,
+      type,
+      shift_volunteers (
+        id,
+        user_id,
+        profiles:user_id (
+          first_name,
+          last_name,
+          role
+        )
+      )
+    `)
+    .gte('date', startDate.toISOString().split('T')[0])
+    .lte('date', endDate.toISOString().split('T')[0])
+    .order('date', { ascending: true });
+
+  if (error) throw error;
+  if (!shifts) return [];
+
+  return shifts.map(shift => ({
+    id: shift.id,
+    date: shift.date,
+    type: shift.type,
+    volunteers: (shift.shift_volunteers || []).map((sv: any) => ({
+      id: sv.user_id,
+      role: sv.profiles.role,
+      name: `${sv.profiles.first_name} ${sv.profiles.last_name}`
+    }))
+  }));
+}
+
+export async function signUpForShift(shiftId: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    throw new Error('You must be logged in to sign up for shifts');
   }
 
-  const shifts = dates.flatMap(date => {
-    const hebrewName = isShabbat(date) ? 'Shabbat' : getHolidayName(date) || '';
-    const isHoliday = !isShabbat(date);
+  // Check if user is already signed up
+  const { data: existing } = await supabase
+    .from('shift_volunteers')
+    .select('id')
+    .eq('shift_id', shiftId)
+    .eq('user_id', user.id)
+    .maybeSingle();
 
-    // Create both early and late shifts
-    return [
-      {
-        date,
-        shift_type: 'EARLY',
-        hebrew_name: hebrewName,
-        is_holiday: isHoliday,
-        min_volunteers: 2,
-        ideal_volunteers: 3
-      },
-      {
-        date,
-        shift_type: 'LATE',
-        hebrew_name: hebrewName,
-        is_holiday: isHoliday,
-        min_volunteers: 2,
-        ideal_volunteers: 3
-      }
-    ];
-  });
+  if (existing) {
+    throw new Error('You are already signed up for this shift');
+  }
 
-  const { data, error } = await supabase
+  // Check if shift exists and is not full
+  const { data: shift } = await supabase
     .from('shifts')
-    .upsert(shifts, { 
-      onConflict: 'date,shift_type',
-      ignoreDuplicates: true 
+    .select('id')
+    .eq('id', shiftId)
+    .single();
+
+  if (!shift) {
+    throw new Error('This shift is no longer available');
+  }
+
+  const { count } = await supabase
+    .from('shift_volunteers')
+    .select('*', { count: 'exact', head: true })
+    .eq('shift_id', shiftId);
+
+  if (count && count >= 4) {
+    throw new Error('This shift is already full');
+  }
+
+  // Sign up for the shift
+  const { error } = await supabase
+    .from('shift_volunteers')
+    .insert({
+      shift_id: shiftId,
+      user_id: user.id
     });
 
   if (error) {
-    console.error('Error generating shifts:', error);
-    throw error;
+    console.error('Signup error:', error);
+    throw new Error('Unable to sign up for shift. Please try again later.');
   }
-
-  return data;
 }

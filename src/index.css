@@ -1,3 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.font-hebrew {
+  font-family: 'Frank Ruhl Libre', 'Noto Sans Hebrew', serif;
+}
