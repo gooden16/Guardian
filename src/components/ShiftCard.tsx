@@ -5,15 +5,16 @@ import type { Shift } from '../types/shift';
 
 interface ShiftCardProps {
   userId: string;
+  userRole?: string;
   date: Date;
   parasha?: string;
   hebrewParasha?: string;
   earlyShift?: Shift;
   lateShift?: Shift;
-  onSignUp: (type: 'early' | 'late') => void;
+  onSignUp: (type: 'early' | 'late', otherType?: 'early' | 'late') => void;
 }
 
-export function ShiftCard({ userId, date, parasha, hebrewParasha, earlyShift, lateShift, onSignUp }: ShiftCardProps) {
+export function ShiftCard({ userId, userRole, date, parasha, hebrewParasha, earlyShift, lateShift, onSignUp }: ShiftCardProps) {
   const getShiftStatus = (shift: Shift) => {
     const volunteerCount = shift.volunteers.length;
     if (volunteerCount === 0) return 'empty';
@@ -40,6 +41,7 @@ export function ShiftCard({ userId, date, parasha, hebrewParasha, earlyShift, la
     if (!shift) return 'Sign Up';
     if (isUserSignedUp(shift)) return 'Signed Up';
     if (getShiftStatus(shift) === 'full') return 'Full';
+    if (userRole === 'TL') return 'Sign Up for Both Shifts';
     return 'Sign Up';
   };
 
@@ -47,6 +49,44 @@ export function ShiftCard({ userId, date, parasha, hebrewParasha, earlyShift, la
     if (!shift) return 'bg-gray-50 text-gray-400';
     if (isUserSignedUp(shift)) return 'bg-gray-100 text-gray-500 cursor-not-allowed';
     return getStatusColor(getShiftStatus(shift));
+  };
+
+  const canSignUp = (shift?: Shift) => {
+    if (!shift || isUserSignedUp(shift) || getShiftStatus(shift) === 'full') {
+      return false;
+    }
+    // For Team Leaders, both shifts must be available
+    if (userRole === 'TL') {
+      return earlyShift && 
+             lateShift && 
+             !isUserSignedUp(earlyShift) &&
+             !isUserSignedUp(lateShift) &&
+             getShiftStatus(earlyShift) !== 'full' &&
+             getShiftStatus(lateShift) !== 'full';
+    }
+    return true;
+  };
+
+  const handleSignUp = (type: 'early' | 'late') => {
+    if (userRole === 'TL') {
+      // For Team Leaders, always sign up for both shifts
+      const otherType = type === 'early' ? 'late' : 'early';
+      const currentShift = type === 'early' ? earlyShift : lateShift;
+      const otherShift = type === 'early' ? lateShift : earlyShift;
+      
+      if (!currentShift || !otherShift) {
+        return; // Both shifts must exist
+      }
+      
+      if (getShiftStatus(currentShift) === 'full' || getShiftStatus(otherShift) === 'full') {
+        return; // Both shifts must have space
+      }
+      
+      onSignUp(type, otherType);
+    } else {
+      // Regular volunteers can sign up for individual shifts
+      onSignUp(type);
+    }
   };
 
   return (
@@ -68,51 +108,94 @@ export function ShiftCard({ userId, date, parasha, hebrewParasha, earlyShift, la
       </div>
       
       <div className="px-4 py-3 space-y-3">
-        {/* Early Shift */}
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-gray-900">Early Shift</p>
-            <p className="text-xs text-gray-500">8:35 AM - 10:10 AM</p>
-            <div className="mt-1 flex items-center gap-1">
-              <Users className="h-4 w-4 text-gray-400" />
-              <span className="text-xs text-gray-500">
-                {earlyShift?.volunteers.length ?? 0}/4
-              </span>
+        {userRole === 'TL' ? (
+          // Team Leader view - single button for both shifts
+          <div className="space-y-4">
+            <div className="space-y-3">
+              {/* Early Shift Info */}
+              <div>
+                <p className="text-sm font-medium text-gray-900">Early Shift</p>
+                <p className="text-xs text-gray-500">8:35 AM - 10:10 AM</p>
+                <div className="mt-1 flex items-center gap-1">
+                  <Users className="h-4 w-4 text-gray-400" />
+                  <span className="text-xs text-gray-500">
+                    {earlyShift?.volunteers.length ?? 0}/4
+                  </span>
+                </div>
+              </div>
+              {/* Late Shift Info */}
+              <div>
+                <p className="text-sm font-medium text-gray-900">Late Shift</p>
+                <p className="text-xs text-gray-500">10:20 AM - 12:00 PM</p>
+                <div className="mt-1 flex items-center gap-1">
+                  <Users className="h-4 w-4 text-gray-400" />
+                  <span className="text-xs text-gray-500">
+                    {lateShift?.volunteers.length ?? 0}/4
+                  </span>
+                </div>
+              </div>
             </div>
+            {/* Combined signup button */}
+            <button
+              onClick={() => handleSignUp('early')}
+              disabled={!canSignUp(earlyShift)}
+              className={`w-full px-3 py-2 text-sm font-medium rounded-md ring-1 ring-inset
+                ${getButtonStyles(earlyShift)}
+                ${!canSignUp(earlyShift) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}
+            >
+              {getButtonText(earlyShift)}
+            </button>
           </div>
-          <button
-            onClick={() => onSignUp('early')}
-            disabled={!earlyShift || getShiftStatus(earlyShift) === 'full' || isUserSignedUp(earlyShift)}
-            className={`px-3 py-1 text-xs font-medium rounded-md ring-1 ring-inset
-              ${getButtonStyles(earlyShift)}
-              ${!earlyShift || getShiftStatus(earlyShift) === 'full' || isUserSignedUp(earlyShift) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}
-          >
-            {getButtonText(earlyShift)}
-          </button>
-        </div>
+        ) : (
+          // Regular volunteer view - separate buttons
+          <>
+            {/* Early Shift */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-900">Early Shift</p>
+                <p className="text-xs text-gray-500">8:35 AM - 10:10 AM</p>
+                <div className="mt-1 flex items-center gap-1">
+                  <Users className="h-4 w-4 text-gray-400" />
+                  <span className="text-xs text-gray-500">
+                    {earlyShift?.volunteers.length ?? 0}/4
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => handleSignUp('early')}
+                disabled={!canSignUp(earlyShift)}
+                className={`px-3 py-1 text-xs font-medium rounded-md ring-1 ring-inset
+                  ${getButtonStyles(earlyShift)}
+                  ${!canSignUp(earlyShift) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}
+              >
+                {getButtonText(earlyShift)}
+              </button>
+            </div>
 
-        {/* Late Shift */}
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-gray-900">Late Shift</p>
-            <p className="text-xs text-gray-500">10:20 AM - 12:00 PM</p>
-            <div className="mt-1 flex items-center gap-1">
-              <Users className="h-4 w-4 text-gray-400" />
-              <span className="text-xs text-gray-500">
-                {lateShift?.volunteers.length ?? 0}/4
-              </span>
+            {/* Late Shift */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-900">Late Shift</p>
+                <p className="text-xs text-gray-500">10:20 AM - 12:00 PM</p>
+                <div className="mt-1 flex items-center gap-1">
+                  <Users className="h-4 w-4 text-gray-400" />
+                  <span className="text-xs text-gray-500">
+                    {lateShift?.volunteers.length ?? 0}/4
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => handleSignUp('late')}
+                disabled={!canSignUp(lateShift)}
+                className={`px-3 py-1 text-xs font-medium rounded-md ring-1 ring-inset
+                  ${getButtonStyles(lateShift)}
+                  ${!canSignUp(lateShift) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}
+              >
+                {getButtonText(lateShift)}
+              </button>
             </div>
-          </div>
-          <button
-            onClick={() => onSignUp('late')}
-            disabled={!lateShift || getShiftStatus(lateShift) === 'full' || isUserSignedUp(lateShift)}
-            className={`px-3 py-1 text-xs font-medium rounded-md ring-1 ring-inset
-              ${getButtonStyles(lateShift)}
-              ${!lateShift || getShiftStatus(lateShift) === 'full' || isUserSignedUp(lateShift) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}
-          >
-            {getButtonText(lateShift)}
-          </button>
-        </div>
+          </>
+        )}
       </div>
     </div>
   );

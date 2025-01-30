@@ -2,6 +2,7 @@ import React from 'react';
 import { useState, useEffect } from 'react';
 import { CalendarDays, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 import { getShifts, signUpForShift, getUserShifts } from '../lib/shifts';
 import { getUpcomingShabbatDates } from '../lib/hebcal';
 import { ShiftCard } from '../components/ShiftCard';
@@ -11,6 +12,7 @@ import type { ShabbatDate } from '../lib/hebcal';
 
 export function ShiftBoard() {
   const { user } = useAuth();
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [userShifts, setUserShifts] = useState<Shift[]>([]);
   const [shabbatDates, setShabbatDates] = useState<ShabbatDate[]>([]);
@@ -20,6 +22,21 @@ export function ShiftBoard() {
   useEffect(() => {
     async function loadData() {
       try {
+        // Get user role
+        if (user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+
+          if (!profile) {
+            throw new Error('User profile not found');
+          }
+
+          setUserRole(profile?.role || null);
+        }
+
         // Get next 4 weeks of shifts
         const startDate = new Date();
         const endDate = new Date();
@@ -28,7 +45,7 @@ export function ShiftBoard() {
         const shiftsData = await getShifts(startDate, endDate);
         const userShiftsData = await getUserShifts();
         const shabbatDatesData = await getUpcomingShabbatDates(startDate);
-        setShifts(shiftsData);
+        setShifts(shiftsData || []);
         setUserShifts(userShiftsData);
         setShabbatDates(shabbatDatesData);
       } catch (error) {
@@ -40,12 +57,12 @@ export function ShiftBoard() {
     }
 
     loadData();
-  }, []);
+  }, [user]);
 
-  const handleSignUp = async (shift: Shift) => {
+  const handleSignUp = async (shift: Shift, otherShift?: Shift) => {
     setError(null);
     try {
-      await signUpForShift(shift.id);
+      await signUpForShift(shift.id, otherShift?.id);
       
       // Reload shifts after signup
       const startDate = new Date();
@@ -124,15 +141,17 @@ export function ShiftBoard() {
             <ShiftCard
               key={date}
               userId={user?.id || ''}
+              userRole={userRole}
               date={shabbatDate}
               parasha={parashaInfo?.parasha}
               hebrewParasha={parashaInfo?.hebrew}
               earlyShift={early}
               lateShift={late}
-              onSignUp={(type) => {
+              onSignUp={(type, otherType) => {
                 const shift = type === 'early' ? early : late;
-                if (shift) {
-                  handleSignUp(shift);
+                const otherShift = otherType === 'early' ? early : late;
+                if (shift && (!userRole || userRole !== 'TL' || otherShift)) {
+                  handleSignUp(shift, otherShift);
                 }
               }}
             />
