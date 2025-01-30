@@ -4,6 +4,7 @@ export interface Shift {
   id: string;
   date: string;
   type: 'early' | 'late';
+  hebrew_parasha?: string;
   volunteers: ShiftVolunteer[];
   messages?: ShiftMessage[];
   messages?: ShiftMessage[];

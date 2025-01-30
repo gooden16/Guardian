@@ -105,7 +105,9 @@ export function ShiftCard({ userId, userRole, date, parasha, hebrewParasha, earl
             {parasha && (
               <div className="mt-1">
                 <p className="text-sm text-gray-600">{parasha}</p>
-                <p className="text-sm text-gray-500 font-hebrew" dir="rtl">{hebrewParasha}</p>
+                <p className="text-sm text-gray-500 font-hebrew" dir="rtl" lang="he">
+                  {earlyShift?.hebrew_parasha || hebrewParasha}
+                </p>
               </div>
             )}
           </div>

@@ -70,8 +70,8 @@ export function UserShifts({ shifts, userId, userRole, className = '' }: UserShi
                 <p className="text-sm text-gray-600">
                   {shabbatDates.find(sd => sd.date.toISOString().split('T')[0] === shift.date)?.parasha}
                 </p>
-                <p className="text-sm text-gray-500 font-hebrew" dir="rtl">
-                  {shabbatDates.find(sd => sd.date.toISOString().split('T')[0] === shift.date)?.hebrew}
+                <p className="text-sm text-gray-500 font-hebrew" dir="rtl" lang="he">
+                  {shift.hebrew_parasha || shabbatDates.find(sd => sd.date.toISOString().split('T')[0] === shift.date)?.hebrew}
                 </p>
               </div>
             )}

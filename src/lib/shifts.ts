@@ -28,6 +28,7 @@ export async function getUserShifts(): Promise<Shift[]> {
       id,
       date,
       type,
+      hebrew_parasha,
       shift_volunteers (
         id,
         user_id,
@@ -58,6 +59,7 @@ export async function getUserShifts(): Promise<Shift[]> {
       id: shift.id,
       date: shift.date,
       type: shift.type,
+      hebrew_parasha: shift.hebrew_parasha,
       volunteers: (shift.shift_volunteers || []).map((sv: any) => ({
         id: sv.user_id,
         role: sv.profiles.role,
@@ -73,15 +75,13 @@ export async function getUserShifts(): Promise<Shift[]> {
     .filter(shift => shift.volunteers.some(v => v.id === user.id));
 }
 export async function getShifts(startDate: Date, endDate: Date): Promise<Shift[]> {
-  // Ensure shifts exist for the date range before querying
-  await ensureShiftsExist(startDate, endDate);
-
   const { data: shifts, error } = await supabase
     .from('shifts')
     .select(`
       id,
       date,
       type,
+      hebrew_parasha,
       shift_volunteers (
         id,
         user_id,
@@ -108,10 +108,12 @@ export async function getShifts(startDate: Date, endDate: Date): Promise<Shift[]
   if (error) throw error;
   if (!shifts) return [];
 
-  return shifts.map(shift => ({
+  // Only return shifts that have records in the database
+  return shifts.filter(shift => shift).map(shift => ({
     id: shift.id,
     date: shift.date,
     type: shift.type,
+    hebrew_parasha: shift.hebrew_parasha,
     volunteers: (shift.shift_volunteers || []).map((sv: any) => ({
       id: sv.user_id,
       role: sv.profiles.role,
