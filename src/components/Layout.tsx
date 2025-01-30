@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { Shield, Calendar, User, LogOut, Settings } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -8,9 +8,9 @@ import { getUserProfile } from '../lib/profiles';
 export function Layout() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [isAdmin, setIsAdmin] = React.useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     async function checkAdmin() {
       if (user) {
         const profile = await getUserProfile(user.id);
@@ -26,8 +26,8 @@ export function Layout() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <nav className="bg-white shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex">
@@ -77,7 +77,7 @@ export function Layout() {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <Outlet />
       </main>
     </div>

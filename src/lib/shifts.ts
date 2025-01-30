@@ -36,6 +36,15 @@ export async function getUserShifts(): Promise<Shift[]> {
           last_name,
           role
         )
+      ),
+      shift_messages (
+        id,
+        message,
+        created_at,
+        profiles:user_id (
+          first_name,
+          last_name
+        )
       )
     `)
     .gte('date', new Date().toISOString().split('T')[0])
@@ -53,6 +62,12 @@ export async function getUserShifts(): Promise<Shift[]> {
         id: sv.user_id,
         role: sv.profiles.role,
         name: `${sv.profiles.first_name} ${sv.profiles.last_name}`
+      })),
+      messages: (shift.shift_messages || []).map((msg: any) => ({
+        id: msg.id,
+        message: msg.message,
+        created_at: msg.created_at,
+        senderName: `${msg.profiles.first_name} ${msg.profiles.last_name}`
       }))
     }))
     .filter(shift => shift.volunteers.some(v => v.id === user.id));
@@ -75,6 +90,15 @@ export async function getShifts(startDate: Date, endDate: Date): Promise<Shift[]
           last_name,
           role
         )
+      ),
+      shift_messages (
+        id,
+        message,
+        created_at,
+        profiles:user_id (
+          first_name,
+          last_name
+        )
       )
     `)
     .gte('date', startDate.toISOString().split('T')[0])
@@ -92,6 +116,12 @@ export async function getShifts(startDate: Date, endDate: Date): Promise<Shift[]
       id: sv.user_id,
       role: sv.profiles.role,
       name: `${sv.profiles.first_name} ${sv.profiles.last_name}`
+    })),
+    messages: (shift.shift_messages || []).map((msg: any) => ({
+      id: msg.id,
+      message: msg.message,
+      created_at: msg.created_at,
+      senderName: `${msg.profiles.first_name} ${msg.profiles.last_name}`
     }))
   }));
 }

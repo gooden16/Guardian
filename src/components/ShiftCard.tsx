@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { format } from 'date-fns';
-import { Users } from 'lucide-react';
+import { Users, MessageCircle } from 'lucide-react';
+import { ShiftView } from './ShiftView';
 import type { Shift } from '../types/shift';
 
 interface ShiftCardProps {
@@ -15,6 +16,10 @@ interface ShiftCardProps {
 }
 
 export function ShiftCard({ userId, userRole, date, parasha, hebrewParasha, earlyShift, lateShift, onSignUp }: ShiftCardProps) {
+  const [viewingShift, setViewingShift] = useState<Shift | null>(null);
+  const isAdmin = userRole === 'admin';
+  const isTeamLeader = userRole === 'TL';
+
   const getShiftStatus = (shift: Shift) => {
     const volunteerCount = shift.volunteers.length;
     if (volunteerCount === 0) return 'empty';
@@ -90,7 +95,7 @@ export function ShiftCard({ userId, userRole, date, parasha, hebrewParasha, earl
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm ring-1 ring-gray-900/5">
+    <div className="bg-white rounded-lg shadow-sm ring-1 ring-gray-900/5 h-full flex flex-col">
       <div className="px-4 py-3 border-b border-gray-200">
         <div className="flex justify-between items-start">
           <div>
@@ -107,7 +112,7 @@ export function ShiftCard({ userId, userRole, date, parasha, hebrewParasha, earl
         </div>
       </div>
       
-      <div className="px-4 py-3 space-y-3">
+      <div className="px-4 py-3 space-y-3 flex-1">
         {userRole === 'TL' ? (
           // Team Leader view - single button for both shifts
           <div className="space-y-4">
@@ -170,6 +175,14 @@ export function ShiftCard({ userId, userRole, date, parasha, hebrewParasha, earl
               >
                 {getButtonText(earlyShift)}
               </button>
+              {earlyShift && (
+                <button
+                  onClick={() => setViewingShift(earlyShift)}
+                  className="ml-2 text-gray-400 hover:text-gray-500"
+                >
+                  <MessageCircle className="h-5 w-5" />
+                </button>
+              )}
             </div>
 
             {/* Late Shift */}
@@ -193,10 +206,26 @@ export function ShiftCard({ userId, userRole, date, parasha, hebrewParasha, earl
               >
                 {getButtonText(lateShift)}
               </button>
+              {lateShift && (
+                <button
+                  onClick={() => setViewingShift(lateShift)}
+                  className="ml-2 text-gray-400 hover:text-gray-500"
+                >
+                  <MessageCircle className="h-5 w-5" />
+                </button>
+              )}
             </div>
           </>
         )}
       </div>
+      {viewingShift && (
+        <ShiftView
+          shift={viewingShift}
+          isAdmin={isAdmin}
+          isTeamLeader={isTeamLeader}
+          onClose={() => setViewingShift(null)}
+        />
+      )}
     </div>
   );
 }

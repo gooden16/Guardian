@@ -143,7 +143,11 @@ export function Profile() {
       
       <div className="bg-white shadow rounded-lg p-6">
         <h2 className="text-lg font-medium text-gray-900 mb-4">Your Shifts</h2>
-        <UserShifts shifts={userShifts} userId={user?.id || ''} />
+        <UserShifts 
+          shifts={userShifts} 
+          userId={user?.id || ''} 
+          userRole={profile?.role}
+        />
       </div>
     </div>
   );

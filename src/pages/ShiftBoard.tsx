@@ -100,9 +100,9 @@ export function ShiftBoard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl font-semibold text-gray-900">Shift Board</h1>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center gap-4 flex-wrap">
           <div className="flex items-center space-x-2 text-sm text-gray-500">
             <CalendarDays className="h-5 w-5" />
             <span>Next 4 Shabbatot</span>
@@ -115,54 +115,60 @@ export function ShiftBoard() {
       </div>
       
       {/* User's Shifts */}
-      <div className="mb-8">
+      <div className="mb-8 bg-white rounded-lg shadow-sm p-6">
         <h2 className="text-lg font-medium text-gray-900 mb-4">My Shifts</h2>
-        <UserShifts shifts={userShifts} userId={user?.id || ''} />
+        <UserShifts 
+          shifts={userShifts} 
+          userId={user?.id || ''} 
+          userRole={userRole}
+        />
       </div>
       {/* Available Shifts */}
-      <h2 className="text-lg font-medium text-gray-900 mb-4">Available Shifts</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* Group shifts by date */}
-        {Object.entries(
-          shifts.reduce((acc, shift) => {
-            const date = shift.date;
-            if (!acc[date]) {
-              acc[date] = { early: null, late: null };
-            }
-            acc[date][shift.type] = shift;
-            return acc;
-          }, {} as Record<string, { early: Shift | null; late: Shift | null }>)
-        ).map(([date, { early, late }]) => {
-          const shabbatDate = new Date(date);
-          const parashaInfo = shabbatDates.find(
-            sd => sd.date.toISOString().split('T')[0] === date
-          );
-          return (
-            <ShiftCard
-              key={date}
-              userId={user?.id || ''}
-              userRole={userRole}
-              date={shabbatDate}
-              parasha={parashaInfo?.parasha}
-              hebrewParasha={parashaInfo?.hebrew}
-              earlyShift={early}
-              lateShift={late}
-              onSignUp={(type, otherType) => {
-                const shift = type === 'early' ? early : late;
-                const otherShift = otherType === 'early' ? early : late;
-                if (shift && (!userRole || userRole !== 'TL' || otherShift)) {
-                  handleSignUp(shift, otherShift);
-                }
-              }}
-            />
-          );
-        })}
-      </div>
-      {error && (
-        <div className="text-red-600 text-center mt-4">
-          {error}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <h2 className="text-lg font-medium text-gray-900 mb-4">Available Shifts</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Group shifts by date */}
+          {Object.entries(
+            shifts.reduce((acc, shift) => {
+              const date = shift.date;
+              if (!acc[date]) {
+                acc[date] = { early: null, late: null };
+              }
+              acc[date][shift.type] = shift;
+              return acc;
+            }, {} as Record<string, { early: Shift | null; late: Shift | null }>)
+          ).map(([date, { early, late }]) => {
+            const shabbatDate = new Date(date);
+            const parashaInfo = shabbatDates.find(
+              sd => sd.date.toISOString().split('T')[0] === date
+            );
+            return (
+              <ShiftCard
+                key={date}
+                userId={user?.id || ''}
+                userRole={userRole}
+                date={shabbatDate}
+                parasha={parashaInfo?.parasha}
+                hebrewParasha={parashaInfo?.hebrew}
+                earlyShift={early}
+                lateShift={late}
+                onSignUp={(type, otherType) => {
+                  const shift = type === 'early' ? early : late;
+                  const otherShift = otherType === 'early' ? early : late;
+                  if (shift && (!userRole || userRole !== 'TL' || otherShift)) {
+                    handleSignUp(shift, otherShift);
+                  }
+                }}
+              />
+            );
+          })}
         </div>
-      )}
+        {error && (
+          <div className="text-red-600 text-center mt-4">
+            {error}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

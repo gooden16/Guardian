@@ -1,19 +1,24 @@
 import React from 'react';
 import { format } from 'date-fns';
-import { Calendar } from 'lucide-react';
+import { Calendar, MessageCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { getUpcomingShabbatDates } from '../lib/hebcal';
+import { ShiftView } from './ShiftView';
 import type { Shift } from '../types/shift';
 import type { ShabbatDate } from '../lib/hebcal';
 
 interface UserShiftsProps {
   shifts: Shift[];
   userId: string;
+  userRole?: string;
   className?: string;
 }
 
-export function UserShifts({ shifts, userId, className = '' }: UserShiftsProps) {
+export function UserShifts({ shifts, userId, userRole, className = '' }: UserShiftsProps) {
   const [shabbatDates, setShabbatDates] = useState<ShabbatDate[]>([]);
+  const [viewingShift, setViewingShift] = useState<Shift | null>(null);
+  const isAdmin = userRole === 'admin';
+  const isTeamLeader = userRole === 'TL';
 
   useEffect(() => {
     async function loadShabbatDates() {
@@ -46,7 +51,15 @@ export function UserShifts({ shifts, userId, className = '' }: UserShiftsProps) 
       {userShifts.map(shift => (
         <div
           key={shift.id}
-          className="bg-white rounded-lg shadow-sm p-4 flex items-center justify-between"
+          onClick={() => setViewingShift(shift)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              setViewingShift(shift);
+            }
+          }}
+          className="bg-white rounded-lg shadow-sm p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         >
           <div>
             <p className="text-sm font-medium text-gray-900">
@@ -78,6 +91,14 @@ export function UserShifts({ shifts, userId, className = '' }: UserShiftsProps) 
           </div>
         </div>
       ))}
+      {viewingShift && (
+        <ShiftView
+          shift={viewingShift}
+          isAdmin={isAdmin}
+          isTeamLeader={isTeamLeader}
+          onClose={() => setViewingShift(null)}
+        />
+      )}
     </div>
   );
 }
