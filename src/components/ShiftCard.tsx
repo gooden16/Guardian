@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { Users, MessageCircle } from 'lucide-react';
 import { ShiftView } from './ShiftView';
@@ -8,28 +8,15 @@ interface ShiftCardProps {
   userId: string;
   userRole?: string;
   date: Date;
-  parasha?: string;
-  hebrewParasha?: string;
   earlyShift?: Shift;
   lateShift?: Shift;
   onSignUp: (type: 'early' | 'late', otherType?: 'early' | 'late') => void;
 }
 
-export function ShiftCard({ userId, userRole, date, parasha, hebrewParasha, earlyShift, lateShift, onSignUp }: ShiftCardProps) {
+export function ShiftCard({ userId, userRole, date, earlyShift, lateShift, onSignUp }: ShiftCardProps) {
   const [viewingShift, setViewingShift] = useState<Shift | null>(null);
   const isAdmin = (userRole || '').toLowerCase() === 'admin';
   const isTeamLeader = userRole === 'TL';
-
-  // Add debug logging
-  useEffect(() => {
-    console.log('ShiftCard props:', {
-      userId,
-      userRole,
-      date,
-      earlyShift,
-      lateShift
-    });
-  }, [userId, userRole, date, earlyShift, lateShift]);
 
   const getShiftStatus = (shift: Shift) => {
     const volunteerCount = shift.volunteers.length;
@@ -71,7 +58,6 @@ export function ShiftCard({ userId, userRole, date, parasha, hebrewParasha, earl
     if (!shift || isUserSignedUp(shift) || getShiftStatus(shift) === 'full') {
       return false;
     }
-    // For Team Leaders, both shifts must be available
     if (userRole === 'TL') {
       return earlyShift && 
              lateShift && 
@@ -83,28 +69,6 @@ export function ShiftCard({ userId, userRole, date, parasha, hebrewParasha, earl
     return true;
   };
 
-  const handleSignUp = (type: 'early' | 'late') => {
-    if (userRole === 'TL') {
-      // For Team Leaders, always sign up for both shifts
-      const otherType = type === 'early' ? 'late' : 'early';
-      const currentShift = type === 'early' ? earlyShift : lateShift;
-      const otherShift = type === 'early' ? lateShift : earlyShift;
-      
-      if (!currentShift || !otherShift) {
-        return; // Both shifts must exist
-      }
-      
-      if (getShiftStatus(currentShift) === 'full' || getShiftStatus(otherShift) === 'full') {
-        return; // Both shifts must have space
-      }
-      
-      onSignUp(type, otherType);
-    } else {
-      // Regular volunteers can sign up for individual shifts
-      onSignUp(type);
-    }
-  };
-
   return (
     <div className="bg-white rounded-lg shadow-sm ring-1 ring-gray-900/5 h-full flex flex-col">
       <div className="px-4 py-3 border-b border-gray-200">
@@ -113,11 +77,10 @@ export function ShiftCard({ userId, userRole, date, parasha, hebrewParasha, earl
             <h3 className="text-base font-semibold text-gray-900">
               {format(date, 'MMMM d, yyyy')}
             </h3>
-            {parasha && (
+            {earlyShift?.hebrew_parasha && (
               <div className="mt-1">
-                <p className="text-sm text-gray-600">{parasha}</p>
-                <p className="text-sm text-gray-500 font-hebrew" dir="rtl" lang="he">
-                  {earlyShift?.hebrew_parasha || hebrewParasha}
+                <p className="text-sm text-gray-600 font-hebrew" dir="rtl" lang="he">
+                  {earlyShift.hebrew_parasha}
                 </p>
               </div>
             )}
@@ -127,10 +90,8 @@ export function ShiftCard({ userId, userRole, date, parasha, hebrewParasha, earl
       
       <div className="px-4 py-3 space-y-3 flex-1">
         {userRole === 'TL' ? (
-          // Team Leader view - single button for both shifts
           <div className="space-y-4">
             <div className="space-y-3">
-              {/* Early Shift Info */}
               <div>
                 <p className="text-sm font-medium text-gray-900">Early Shift</p>
                 <p className="text-xs text-gray-500">8:35 AM - 10:10 AM</p>
@@ -141,7 +102,6 @@ export function ShiftCard({ userId, userRole, date, parasha, hebrewParasha, earl
                   </span>
                 </div>
               </div>
-              {/* Late Shift Info */}
               <div>
                 <p className="text-sm font-medium text-gray-900">Late Shift</p>
                 <p className="text-xs text-gray-500">10:20 AM - 12:00 PM</p>
@@ -153,7 +113,6 @@ export function ShiftCard({ userId, userRole, date, parasha, hebrewParasha, earl
                 </div>
               </div>
             </div>
-            {/* Combined signup button */}
             <button
               onClick={() => handleSignUp('early')}
               disabled={!canSignUp(earlyShift)}
@@ -165,9 +124,7 @@ export function ShiftCard({ userId, userRole, date, parasha, hebrewParasha, earl
             </button>
           </div>
         ) : (
-          // Regular volunteer view - separate buttons
           <>
-            {/* Early Shift */}
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-900">Early Shift</p>
@@ -180,7 +137,7 @@ export function ShiftCard({ userId, userRole, date, parasha, hebrewParasha, earl
                 </div>
               </div>
               <button
-                onClick={() => handleSignUp('early')}
+                onClick={() => onSignUp('early')}
                 disabled={!canSignUp(earlyShift)}
                 className={`px-3 py-1 text-xs font-medium rounded-md ring-1 ring-inset
                   ${getButtonStyles(earlyShift)}
@@ -198,7 +155,6 @@ export function ShiftCard({ userId, userRole, date, parasha, hebrewParasha, earl
               )}
             </div>
 
-            {/* Late Shift */}
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-900">Late Shift</p>
@@ -211,7 +167,7 @@ export function ShiftCard({ userId, userRole, date, parasha, hebrewParasha, earl
                 </div>
               </div>
               <button
-                onClick={() => handleSignUp('late')}
+                onClick={() => onSignUp('late')}
                 disabled={!canSignUp(lateShift)}
                 className={`px-3 py-1 text-xs font-medium rounded-md ring-1 ring-inset
                   ${getButtonStyles(lateShift)}
