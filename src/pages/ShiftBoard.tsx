@@ -19,6 +19,9 @@ export function ShiftBoard() {
   useEffect(() => {
     async function loadData() {
       try {
+        setLoading(true);
+        setError(null);
+
         if (!user) throw new Error('User not authenticated');
 
         // Get user role
@@ -26,32 +29,31 @@ export function ShiftBoard() {
           .from('profiles')
           .select('role')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
         
         if (profileError) {
           console.error('Profile error:', profileError);
           throw new Error('Failed to load user profile');
         }
 
-        setUserRole(profile?.role || 'L1'); // Default to L1 if no role found
+        if (!profile) {
+          throw new Error('User profile not found');
+        }
+
+        setUserRole(profile.role);
 
         // Get next 4 weeks of shifts
         const startDate = new Date();
         const endDate = new Date();
         endDate.setDate(endDate.getDate() + 28);
         
-        try {
-          const [shiftsData, userShiftsData, shabbatDatesData] = await Promise.all([
-            getShifts(startDate, endDate),
-            getUserShifts()
-          ]);
+        const [shiftsData, userShiftsData] = await Promise.all([
+          getShifts(startDate, endDate),
+          getUserShifts()
+        ]);
         
-          setShifts(shiftsData);
-          setUserShifts(userShiftsData);
-        } catch (err) {
-          console.error('Error loading data:', err);
-          throw new Error('Failed to load shift data');
-        }
+        setShifts(shiftsData);
+        setUserShifts(userShiftsData);
 
       } catch (error) {
         console.error('Failed to load data:', error);
@@ -61,7 +63,9 @@ export function ShiftBoard() {
       }
     }
 
-    loadData();
+    if (user) {
+      loadData();
+    }
   }, [user]);
 
   const handleSignUp = async (shift: Shift, otherShift?: Shift) => {

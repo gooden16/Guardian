@@ -76,13 +76,6 @@ export async function getUserShifts(): Promise<Shift[]> {
 }
 export async function getShifts(startDate: Date, endDate: Date): Promise<Shift[]> {
   try {
-    // First ensure shifts exist for the date range
-    await supabase
-      .rpc('ensure_shifts_exist', {
-        start_date: formatDateForDB(startDate.toISOString()),
-        end_date: formatDateForDB(endDate.toISOString())
-      });
-
     const { data: shifts, error: shiftsError } = await supabase
       .from('shifts')
       .select(`
@@ -125,17 +118,17 @@ export async function getShifts(startDate: Date, endDate: Date): Promise<Shift[]
       date: shift.date,
       type: shift.type,
       hebrew_parasha: shift.hebrew_parasha,
-      volunteers: (shift.shift_volunteers || []).map((sv: any) => ({
+      volunteers: Array.isArray(shift.shift_volunteers) ? shift.shift_volunteers.map((sv: any) => ({
         id: sv.user_id,
         role: sv.profiles.role,
         name: `${sv.profiles.first_name} ${sv.profiles.last_name}`
-      })),
-      messages: (shift.shift_messages || []).map((msg: any) => ({
+      })) : [],
+      messages: Array.isArray(shift.shift_messages) ? shift.shift_messages.map((msg: any) => ({
         id: msg.id,
         message: msg.message,
         created_at: msg.created_at,
         senderName: `${msg.profiles.first_name} ${msg.profiles.last_name}`
-      }))
+      })) : []
     }));
 
   } catch (error) {

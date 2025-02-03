@@ -18,18 +18,38 @@ export function Profile() {
   useEffect(() => {
     async function loadData() {
       try {
+        setLoading(true);
+        setError(null);
+
         const shifts = await getUserShifts();
-        const profileData = user ? await getUserProfile(user.id) : null;
+        
+        if (!user) {
+          throw new Error('User not authenticated');
+        }
+
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (profileError) {
+          throw profileError;
+        }
+
         setUserShifts(shifts);
         setProfile(profileData);
       } catch (error) {
-        console.error('Failed to load user data:', error);
+        console.error('Failed to load profile data:', error);
+        setError('Failed to load profile data. Please try again.');
       } finally {
         setLoading(false);
       }
     }
 
-    loadData();
+    if (user) {
+      loadData();
+    }
   }, [user]);
 
   const getRoleDisplay = (role: string) => {
