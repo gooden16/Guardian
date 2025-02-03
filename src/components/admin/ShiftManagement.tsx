@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { supabase } from '../../lib/supabase';
-import { getUpcomingShabbatDates } from '../../lib/hebcal';
 import type { Shift } from '../../types/shift';
-import type { ShabbatDate } from '../../lib/hebcal';
 import { Users, Trash2 } from 'lucide-react';
+import { ShiftCreation } from './ShiftCreation';
 
 export function ShiftManagement() {
   const [shifts, setShifts] = useState<Shift[]>([]);
-  const [shabbatDates, setShabbatDates] = useState<ShabbatDate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,12 +46,6 @@ export function ShiftManagement() {
       })) || [];
 
       setShifts(shiftsData);
-
-      if (shiftsData.length > 0) {
-        const startDate = new Date(shiftsData[0].date);
-        const dates = await getUpcomingShabbatDates(startDate);
-        setShabbatDates(dates);
-      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load shifts');
     } finally {
@@ -94,21 +86,10 @@ export function ShiftManagement() {
     );
   }
 
-  async function handleSyncParasha() {
-  try {
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + 90); // Sync next 90 days
-    
-    await syncParashaData(startDate, endDate);
-    await loadShifts(); // Reload shifts after sync
-  } catch (err) {
-    setError(err instanceof Error ? err.message : 'Failed to sync parasha data');
-  }
-}
-  
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      <ShiftCreation onSuccess={loadShifts} />
+      
       {Object.entries(shifts.reduce((acc: { [key: string]: Shift[] }, shift) => {
         const date = shift.date;
         if (!acc[date]) acc[date] = [];
@@ -119,17 +100,13 @@ export function ShiftManagement() {
           <div className="px-4 py-5 sm:p-6">
             <h3 className="text-base font-semibold leading-6 text-gray-900">
               {format(new Date(date), 'MMMM d, yyyy')}
-              {(() => {
-                const parashaInfo = shabbatDates.find(
-                  sd => sd.date.toISOString().split('T')[0] === date
-                );
-                return parashaInfo && (
-                  <div className="mt-1">
-                    <p className="text-sm text-gray-600">{parashaInfo.parasha}</p>
-                    <p className="text-sm text-gray-500 font-hebrew">{parashaInfo.hebrew}</p>
-                  </div>
-                );
-              })()}
+              {dayShifts[0]?.hebrew_parasha && (
+                <div className="mt-1">
+                  <p className="text-sm text-gray-500 font-hebrew" dir="rtl" lang="he">
+                    {dayShifts[0].hebrew_parasha}
+                  </p>
+                </div>
+              )}
             </h3>
             
             <div className="mt-6 space-y-6">

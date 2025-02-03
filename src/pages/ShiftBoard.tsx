@@ -41,7 +41,7 @@ export function ShiftBoard() {
         endDate.setDate(endDate.getDate() + 28);
         
         try {
-          const [shiftsData, userShiftsData] = await Promise.all([
+          const [shiftsData, userShiftsData, shabbatDatesData] = await Promise.all([
             getShifts(startDate, endDate),
             getUserShifts()
           ]);
@@ -136,11 +136,11 @@ export function ShiftBoard() {
           userRole={userRole}
         />
       </div>
-
       {/* Available Shifts */}
       <div className="bg-white rounded-lg shadow-sm p-6">
         <h2 className="text-lg font-medium text-gray-900 mb-4">Available Shifts</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Group shifts by date */}
           {Object.entries(
             shifts.reduce((acc, shift) => {
               const date = shift.date;

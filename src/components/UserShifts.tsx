@@ -1,11 +1,9 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { Calendar, MessageCircle } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { getUpcomingShabbatDates } from '../lib/hebcal';
+import { useState } from 'react';
 import { ShiftView } from './ShiftView';
 import type { Shift } from '../types/shift';
-import type { ShabbatDate } from '../lib/hebcal';
 
 interface UserShiftsProps {
   shifts: Shift[];
@@ -15,21 +13,9 @@ interface UserShiftsProps {
 }
 
 export function UserShifts({ shifts, userId, userRole, className = '' }: UserShiftsProps) {
-  const [shabbatDates, setShabbatDates] = useState<ShabbatDate[]>([]);
   const [viewingShift, setViewingShift] = useState<Shift | null>(null);
   const isAdmin = userRole === 'admin';
   const isTeamLeader = userRole === 'TL';
-
-  useEffect(() => {
-    async function loadShabbatDates() {
-      if (shifts.length > 0) {
-        const startDate = new Date(shifts[0].date);
-        const dates = await getUpcomingShabbatDates(startDate);
-        setShabbatDates(dates);
-      }
-    }
-    loadShabbatDates();
-  }, [shifts]);
 
   const userShifts = shifts.filter(shift => 
     shift.volunteers.some(volunteer => volunteer.id === userId)
@@ -65,13 +51,10 @@ export function UserShifts({ shifts, userId, userRole, className = '' }: UserShi
             <p className="text-sm font-medium text-gray-900">
               {format(new Date(shift.date), 'MMMM d, yyyy')}
             </p>
-            {shabbatDates.find(sd => sd.date.toISOString().split('T')[0] === shift.date) && (
+            {shift.hebrew_parasha && (
               <div className="mt-1">
-                <p className="text-sm text-gray-600">
-                  {shabbatDates.find(sd => sd.date.toISOString().split('T')[0] === shift.date)?.parasha}
-                </p>
                 <p className="text-sm text-gray-500 font-hebrew" dir="rtl" lang="he">
-                  {shift.hebrew_parasha || shabbatDates.find(sd => sd.date.toISOString().split('T')[0] === shift.date)?.hebrew}
+                  {shift.hebrew_parasha}
                 </p>
               </div>
             )}
