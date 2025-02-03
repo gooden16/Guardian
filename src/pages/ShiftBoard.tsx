@@ -4,22 +4,18 @@ import { CalendarDays, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { getShifts, signUpForShift, getUserShifts } from '../lib/shifts';
-import { getUpcomingShabbatDates } from '../lib/hebcal';
 import { ShiftCard } from '../components/ShiftCard';
 import { UserShifts } from '../components/UserShifts';
 import type { Shift } from '../types/shift';
-import type { ShabbatDate } from '../lib/hebcal';
 
 export function ShiftBoard() {
   const { user } = useAuth();
   const [userRole, setUserRole] = useState<string | null>(null);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [userShifts, setUserShifts] = useState<Shift[]>([]);
-  const [shabbatDates, setShabbatDates] = useState<ShabbatDate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Add error handling for profile fetch
   useEffect(() => {
     async function loadData() {
       try {
@@ -45,15 +41,13 @@ export function ShiftBoard() {
         endDate.setDate(endDate.getDate() + 28);
         
         try {
-          const [shiftsData, userShiftsData, shabbatDatesData] = await Promise.all([
+          const [shiftsData, userShiftsData] = await Promise.all([
             getShifts(startDate, endDate),
-            getUserShifts(),
-            getUpcomingShabbatDates(startDate)
+            getUserShifts()
           ]);
         
           setShifts(shiftsData);
           setUserShifts(userShiftsData);
-          setShabbatDates(shabbatDatesData);
         } catch (err) {
           console.error('Error loading data:', err);
           throw new Error('Failed to load shift data');
@@ -68,6 +62,7 @@ export function ShiftBoard() {
     }
 
     loadData();
+  }, [user]);
 
   const handleSignUp = async (shift: Shift, otherShift?: Shift) => {
     setError(null);
@@ -141,11 +136,11 @@ export function ShiftBoard() {
           userRole={userRole}
         />
       </div>
+
       {/* Available Shifts */}
       <div className="bg-white rounded-lg shadow-sm p-6">
         <h2 className="text-lg font-medium text-gray-900 mb-4">Available Shifts</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Group shifts by date */}
           {Object.entries(
             shifts.reduce((acc, shift) => {
               const date = shift.date;
@@ -157,17 +152,12 @@ export function ShiftBoard() {
             }, {} as Record<string, { early: Shift | null; late: Shift | null }>)
           ).map(([date, { early, late }]) => {
             const shabbatDate = new Date(date);
-            const parashaInfo = shabbatDates.find(
-              sd => sd.date.toISOString().split('T')[0] === date
-            );
             return (
               <ShiftCard
                 key={date}
                 userId={user?.id || ''}
                 userRole={userRole}
                 date={shabbatDate}
-                parasha={parashaInfo?.parasha}
-                hebrewParasha={parashaInfo?.hebrew}
                 earlyShift={early}
                 lateShift={late}
                 onSignUp={(type, otherType) => {
