@@ -94,6 +94,19 @@ export function ShiftManagement() {
     );
   }
 
+  async function handleSyncParasha() {
+  try {
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + 90); // Sync next 90 days
+    
+    await syncParashaData(startDate, endDate);
+    await loadShifts(); // Reload shifts after sync
+  } catch (err) {
+    setError(err instanceof Error ? err.message : 'Failed to sync parasha data');
+  }
+}
+  
   return (
     <div className="space-y-6">
       {Object.entries(shifts.reduce((acc: { [key: string]: Shift[] }, shift) => {
