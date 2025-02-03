@@ -75,57 +75,73 @@ export async function getUserShifts(): Promise<Shift[]> {
     .filter(shift => shift.volunteers.some(v => v.id === user.id));
 }
 export async function getShifts(startDate: Date, endDate: Date): Promise<Shift[]> {
-  const { data: shifts, error } = await supabase
-    .from('shifts')
-    .select(`
-      id,
-      date,
-      type,
-      hebrew_parasha,
-      shift_volunteers (
-        id,
-        user_id,
-        profiles:user_id (
-          first_name,
-          last_name,
-          role
-        )
-      ),
-      shift_messages (
-        id,
-        message,
-        created_at,
-        profiles:user_id (
-          first_name,
-          last_name
-        )
-      )
-    `)
-    .gte('date', startDate.toISOString().split('T')[0])
-    .lte('date', endDate.toISOString().split('T')[0])
-    .order('date', { ascending: true });
+  try {
+    // First ensure shifts exist for the date range
+    await supabase
+      .rpc('ensure_shifts_exist', {
+        start_date: formatDateForDB(startDate.toISOString()),
+        end_date: formatDateForDB(endDate.toISOString())
+      });
 
-  if (error) throw error;
-  if (!shifts) return [];
+    const { data: shifts, error: shiftsError } = await supabase
+      .from('shifts')
+      .select(`
+        id,
+        date,
+        type,
+        hebrew_parasha,
+        shift_volunteers (
+          id,
+          user_id,
+          profiles:user_id (
+            first_name,
+            last_name,
+            role
+          )
+        ),
+        shift_messages (
+          id,
+          message,
+          created_at,
+          profiles:user_id (
+            first_name,
+            last_name
+          )
+        )
+      `)
+      .gte('date', startDate.toISOString().split('T')[0])
+      .lte('date', endDate.toISOString().split('T')[0])
+      .order('date', { ascending: true });
 
-  // Only return shifts that have records in the database
-  return shifts.filter(shift => shift).map(shift => ({
-    id: shift.id,
-    date: shift.date,
-    type: shift.type,
-    hebrew_parasha: shift.hebrew_parasha,
-    volunteers: (shift.shift_volunteers || []).map((sv: any) => ({
-      id: sv.user_id,
-      role: sv.profiles.role,
-      name: `${sv.profiles.first_name} ${sv.profiles.last_name}`
-    })),
-    messages: (shift.shift_messages || []).map((msg: any) => ({
-      id: msg.id,
-      message: msg.message,
-      created_at: msg.created_at,
-      senderName: `${msg.profiles.first_name} ${msg.profiles.last_name}`
-    }))
-  }));
+    if (shiftsError) {
+      console.error('Error fetching shifts:', shiftsError);
+      throw new Error('Failed to load shifts');
+    }
+
+    if (!shifts) return [];
+
+    return shifts.map(shift => ({
+      id: shift.id,
+      date: shift.date,
+      type: shift.type,
+      hebrew_parasha: shift.hebrew_parasha,
+      volunteers: (shift.shift_volunteers || []).map((sv: any) => ({
+        id: sv.user_id,
+        role: sv.profiles.role,
+        name: `${sv.profiles.first_name} ${sv.profiles.last_name}`
+      })),
+      messages: (shift.shift_messages || []).map((msg: any) => ({
+        id: msg.id,
+        message: msg.message,
+        created_at: msg.created_at,
+        senderName: `${msg.profiles.first_name} ${msg.profiles.last_name}`
+      }))
+    }));
+
+  } catch (error) {
+    console.error('Error in getShifts:', error);
+    throw error;
+  }
 }
 
 export async function signUpForShift(shiftId: string, otherShiftId?: string): Promise<void> {

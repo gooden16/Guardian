@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Users, MessageCircle } from 'lucide-react';
 import { ShiftView } from './ShiftView';
@@ -17,8 +17,19 @@ interface ShiftCardProps {
 
 export function ShiftCard({ userId, userRole, date, parasha, hebrewParasha, earlyShift, lateShift, onSignUp }: ShiftCardProps) {
   const [viewingShift, setViewingShift] = useState<Shift | null>(null);
-  const isAdmin = userRole === 'admin';
+  const isAdmin = (userRole || '').toLowerCase() === 'admin';
   const isTeamLeader = userRole === 'TL';
+
+  // Add debug logging
+  useEffect(() => {
+    console.log('ShiftCard props:', {
+      userId,
+      userRole,
+      date,
+      earlyShift,
+      lateShift
+    });
+  }, [userId, userRole, date, earlyShift, lateShift]);
 
   const getShiftStatus = (shift: Shift) => {
     const volunteerCount = shift.volunteers.length;

@@ -19,45 +19,55 @@ export function ShiftBoard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Add error handling for profile fetch
   useEffect(() => {
     async function loadData() {
       try {
+        if (!user) throw new Error('User not authenticated');
+
         // Get user role
-        if (user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single();
-
-          if (!profile) {
-            throw new Error('User profile not found');
-          }
-
-          setUserRole(profile?.role || null);
+        const { data: profile, error: profileError } = await supabase 
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+        
+        if (profileError) {
+          console.error('Profile error:', profileError);
+          throw new Error('Failed to load user profile');
         }
+
+        setUserRole(profile?.role || 'L1'); // Default to L1 if no role found
 
         // Get next 4 weeks of shifts
         const startDate = new Date();
         const endDate = new Date();
         endDate.setDate(endDate.getDate() + 28);
         
-        const shiftsData = await getShifts(startDate, endDate);
-        const userShiftsData = await getUserShifts();
-        const shabbatDatesData = await getUpcomingShabbatDates(startDate);
-        setShifts(shiftsData || []);
-        setUserShifts(userShiftsData);
-        setShabbatDates(shabbatDatesData);
+        try {
+          const [shiftsData, userShiftsData, shabbatDatesData] = await Promise.all([
+            getShifts(startDate, endDate),
+            getUserShifts(),
+            getUpcomingShabbatDates(startDate)
+          ]);
+        
+          setShifts(shiftsData);
+          setUserShifts(userShiftsData);
+          setShabbatDates(shabbatDatesData);
+        } catch (err) {
+          console.error('Error loading data:', err);
+          throw new Error('Failed to load shift data');
+        }
+
       } catch (error) {
         console.error('Failed to load data:', error);
-        setError(error instanceof Error ? error.message : 'An error occurred');
+        setError('Failed to load shift data. Please try again.');
       } finally {
         setLoading(false);
       }
     }
 
     loadData();
-  }, [user]);
 
   const handleSignUp = async (shift: Shift, otherShift?: Shift) => {
     setError(null);
@@ -92,8 +102,16 @@ export function ShiftBoard() {
   
   if (error) {
     return (
-      <div className="text-red-600 text-center py-4">
-        {error}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="text-center">
+          <p className="text-red-600 font-medium mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }
