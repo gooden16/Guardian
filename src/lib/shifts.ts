@@ -182,16 +182,15 @@ export async function signUpForShift(shiftId: string, otherShiftId?: string): Pr
   } else {
     // Regular volunteer signup
     // Check if already signed up
-    const { data: existing } = await supabase
+      const { error } = await supabase
       .from('shift_volunteers')
-      .select('id')
-      .eq('shift_id', shiftId)
-      .eq('user_id', user.id)
-      .maybeSingle();
+      .insert([{
+      shift_id: shiftId,
+      user_id: user.id
+      }]);
 
-    if (existing) {
-      throw new Error('You are already signed up for this shift');
-    }
+    if (error) throw error;
+  }
 
     // Check if shift exists and is not full
     const { data: shift } = await supabase
