@@ -5,7 +5,7 @@ import type { User } from '@supabase/supabase-js';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signInWithProvider: (provider: 'google' | 'apple') => Promise<void>;
+  signInWithProvider: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -32,9 +32,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signInWithProvider = async (provider: 'google' | 'apple') => {
+  const signInWithProvider = async () => {
     await supabase.auth.signInWithOAuth({
-      provider,
       options: {
         redirectTo: `${window.location.origin}/complete-profile`,
         scopes: 'email profile'
