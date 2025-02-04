@@ -22,14 +22,19 @@ export function ShiftBoard() {
         setLoading(true);
         setError(null);
 
-        if (!user) throw new Error('User not authenticated');
+        if (!user) {
+          console.error('No user found');
+          throw new Error('User not authenticated');
+        }
+
+        console.log('Loading data for user:', user.id);
 
         // Get user role
         const { data: profile, error: profileError } = await supabase 
           .from('profiles')
           .select('role')
           .eq('id', user.id)
-          .maybeSingle();
+          .single();
         
         if (profileError) {
           console.error('Profile error:', profileError);
@@ -37,9 +42,11 @@ export function ShiftBoard() {
         }
 
         if (!profile) {
+          console.error('No profile found for user:', user.id);
           throw new Error('User profile not found');
         }
 
+        console.log('User role:', profile.role);
         setUserRole(profile.role);
 
         // Get next 4 weeks of shifts
@@ -47,17 +54,29 @@ export function ShiftBoard() {
         const endDate = new Date();
         endDate.setDate(endDate.getDate() + 28);
         
-        const [shiftsData, userShiftsData] = await Promise.all([
-          getShifts(startDate, endDate),
-          getUserShifts()
-        ]);
-        
-        setShifts(shiftsData);
-        setUserShifts(userShiftsData);
+        console.log('Fetching shifts from', startDate, 'to', endDate);
+
+        try {
+          const shiftsData = await getShifts(startDate, endDate);
+          console.log('Shifts data received:', shiftsData?.length || 0, 'shifts');
+          setShifts(shiftsData);
+        } catch (shiftsError) {
+          console.error('Error loading shifts:', shiftsError);
+          throw new Error('Failed to load shifts data');
+        }
+
+        try {
+          const userShiftsData = await getUserShifts();
+          console.log('User shifts data received:', userShiftsData?.length || 0, 'shifts');
+          setUserShifts(userShiftsData);
+        } catch (userShiftsError) {
+          console.error('Error loading user shifts:', userShiftsError);
+          throw new Error('Failed to load user shifts data');
+        }
 
       } catch (error) {
         console.error('Failed to load data:', error);
-        setError('Failed to load shift data. Please try again.');
+        setError(error instanceof Error ? error.message : 'Failed to load shift data. Please try again.');
       } finally {
         setLoading(false);
       }
@@ -140,6 +159,7 @@ export function ShiftBoard() {
           userRole={userRole}
         />
       </div>
+
       {/* Available Shifts */}
       <div className="bg-white rounded-lg shadow-sm p-6">
         <h2 className="text-lg font-medium text-gray-900 mb-4">Available Shifts</h2>
