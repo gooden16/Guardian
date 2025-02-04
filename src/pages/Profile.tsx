@@ -5,6 +5,7 @@ import { getUserProfile, updateUserProfile } from '../lib/profiles';
 import { UserShifts } from '../components/UserShifts';
 import { ProfileForm } from '../components/ProfileForm';
 import { Pencil } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 import type { Shift } from '../types/shift';
 import type { Profile } from '../types/profile';
 
@@ -13,6 +14,7 @@ export function Profile() {
   const [userShifts, setUserShifts] = useState<Shift[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
@@ -22,7 +24,7 @@ export function Profile() {
         setError(null);
 
         const shifts = await getUserShifts();
-        
+
         if (!user) {
           throw new Error('User not authenticated');
         }

@@ -57,6 +57,20 @@ export async function createUserProfile(user: User) {
 }
 
 export async function requestRoleChange(newRole: VolunteerRole): Promise<string> {
+  // Get current user's role first
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role')
+    .single();
+
+  if (profileError) throw profileError;
+  if (!profile) throw new Error('User profile not found');
+
+  // Don't allow requesting the same role
+  if (profile.role === newRole) {
+    throw new Error('You already have this role');
+  }
+
   const { data, error } = await supabase
     .rpc('request_role_change', {
       requested_role: newRole

@@ -6,9 +6,10 @@ import { supabase } from '../lib/supabase';
 import { getShifts, signUpForShift, getUserShifts } from '../lib/shifts';
 import { ShiftCard } from '../components/ShiftCard';
 import { UserShifts } from '../components/UserShifts';
+import { ActivityFeed } from '../components/ActivityFeed';
 import type { Shift } from '../types/shift';
 
-export function ShiftBoard() {
+function ShiftBoard() {
   const { user } = useAuth();
   const [userRole, setUserRole] = useState<string | null>(null);
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -110,6 +111,18 @@ export function ShiftBoard() {
     }
   };
 
+  const handleWithdraw = async () => {
+    // Reload shifts after withdrawal
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + 28);
+
+    const shiftsData = await getShifts(startDate, endDate);
+    const userShiftsData = await getUserShifts();
+    setShifts(shiftsData);
+    setUserShifts(userShiftsData);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -135,72 +148,82 @@ export function ShiftBoard() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-2xl font-semibold text-gray-900">Shift Board</h1>
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center space-x-2 text-sm text-gray-500">
-            <CalendarDays className="h-5 w-5" />
-            <span>Next 4 Shabbatot</span>
+    <div className="flex gap-6">
+      <div className="flex-1 space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h1 className="text-2xl font-semibold text-gray-900">Shift Board</h1>
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center space-x-2 text-sm text-gray-500">
+              <CalendarDays className="h-5 w-5" />
+              <span>Next 4 Shabbatot</span>
+            </div>
+            <div className="flex items-center space-x-2 text-sm text-gray-500">
+              <Users className="h-5 w-5" />
+              <span>Your Shifts: {userShifts.length}/3</span>
+            </div>
           </div>
-          <div className="flex items-center space-x-2 text-sm text-gray-500">
-            <Users className="h-5 w-5" />
-            <span>Your Shifts: {userShifts.length}/3</span>
+        </div>
+        
+        {/* User's Shifts */}
+        <div className="mb-8 bg-white rounded-lg shadow-sm p-6">
+          <h2 className="text-lg font-medium text-gray-900 mb-4">My Shifts</h2>
+          <UserShifts 
+            shifts={userShifts} 
+            userId={user?.id || ''} 
+            userRole={userRole}
+          />
+        </div>
+
+        {/* Available Shifts */}
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <h2 className="text-lg font-medium text-gray-900 mb-4">Available Shifts</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Group shifts by date */}
+            {Object.entries(
+              shifts.reduce((acc, shift) => {
+                const date = shift.date;
+                if (!acc[date]) {
+                  acc[date] = { early: null, late: null };
+                }
+                acc[date][shift.type] = shift;
+                return acc;
+              }, {} as Record<string, { early: Shift | null; late: Shift | null }>)
+            ).map(([date, { early, late }]) => {
+              const shabbatDate = new Date(date);
+              return (
+                <ShiftCard
+                  key={date}
+                  userId={user?.id || ''}
+                  userRole={userRole}
+                  date={shabbatDate}
+                  earlyShift={early}
+                  lateShift={late}
+                  onSignUp={(type, otherType) => {
+                    const shift = type === 'early' ? early : late;
+                    const otherShift = otherType === 'early' ? early : late;
+                    if (shift && (!userRole || userRole !== 'TL' || otherShift)) {
+                      handleSignUp(shift, otherShift);
+                    }
+                  }}
+                  onWithdraw={handleWithdraw}
+                />
+              );
+            })}
           </div>
+          {error && (
+            <div className="text-red-600 text-center mt-4">
+              {error}
+            </div>
+          )}
         </div>
       </div>
       
-      {/* User's Shifts */}
-      <div className="mb-8 bg-white rounded-lg shadow-sm p-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">My Shifts</h2>
-        <UserShifts 
-          shifts={userShifts} 
-          userId={user?.id || ''} 
-          userRole={userRole}
-        />
-      </div>
-
-      {/* Available Shifts */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Available Shifts</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Group shifts by date */}
-          {Object.entries(
-            shifts.reduce((acc, shift) => {
-              const date = shift.date;
-              if (!acc[date]) {
-                acc[date] = { early: null, late: null };
-              }
-              acc[date][shift.type] = shift;
-              return acc;
-            }, {} as Record<string, { early: Shift | null; late: Shift | null }>)
-          ).map(([date, { early, late }]) => {
-            const shabbatDate = new Date(date);
-            return (
-              <ShiftCard
-                key={date}
-                userId={user?.id || ''}
-                userRole={userRole}
-                date={shabbatDate}
-                earlyShift={early}
-                lateShift={late}
-                onSignUp={(type, otherType) => {
-                  const shift = type === 'early' ? early : late;
-                  const otherShift = otherType === 'early' ? early : late;
-                  if (shift && (!userRole || userRole !== 'TL' || otherShift)) {
-                    handleSignUp(shift, otherShift);
-                  }
-                }}
-              />
-            );
-          })}
-        </div>
-        {error && (
-          <div className="text-red-600 text-center mt-4">
-            {error}
-          </div>
-        )}
+      {/* Activity Feed */}
+      <div className="hidden lg:block w-80 bg-white rounded-lg shadow-sm p-6 h-fit sticky top-24">
+        <ActivityFeed />
       </div>
     </div>
   );
 }
+
+export { ShiftBoard };

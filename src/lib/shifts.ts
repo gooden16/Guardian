@@ -14,8 +14,52 @@ async function ensureShiftsExist(startDate: Date, endDate: Date): Promise<void> 
     });
 
   if (error) throw error;
+  return data;
 }
 
+export async function withdrawFromShift(shiftId: string, reason: string): Promise<void> {
+  const { error } = await supabase
+    .rpc('withdraw_from_shift', {
+      p_shift_id: shiftId,
+      p_reason: reason
+    });
+
+  if (error) throw error;
+}
+
+export async function withdrawFromShifts(shiftIds: string[], reason: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    throw new Error('You must be logged in to withdraw from shifts');
+  }
+
+  // Get user's role
+  const { data: userProfile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (!userProfile) {
+    throw new Error('User profile not found');
+  }
+
+  // For Team Leaders, ensure they're withdrawing from both shifts
+  if (userProfile.role === 'TL' && shiftIds.length !== 2) {
+    throw new Error('Team Leaders must withdraw from both shifts');
+  }
+
+  // Call the withdraw function for each shift
+  for (const shiftId of shiftIds) {
+    const { error } = await supabase.rpc('withdraw_from_shift', {
+      p_shift_id: shiftId,
+      p_reason: reason
+    });
+
+    if (error) throw error;
+  }
+}
 export async function getShifts(startDate: Date, endDate: Date): Promise<Shift[]> {
   try {
     // Format dates consistently for the query

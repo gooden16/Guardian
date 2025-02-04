@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Users, MessageCircle } from 'lucide-react';
+import { Users, MessageCircle, LogOut } from 'lucide-react';
 import type { Shift } from '../types/shift';
+import { withdrawFromShift, withdrawFromShifts } from '../lib/shifts';
 
 interface ShiftCardProps {
   userId: string;
@@ -10,10 +11,14 @@ interface ShiftCardProps {
   earlyShift?: Shift;
   lateShift?: Shift;
   onSignUp: (type: 'early' | 'late', otherType?: 'early' | 'late') => void;
+  onWithdraw: () => void;
 }
 
-export function ShiftCard({ userId, userRole, date, earlyShift, lateShift, onSignUp }: ShiftCardProps) {
+export function ShiftCard({ userId, userRole, date, earlyShift, lateShift, onSignUp, onWithdraw }: ShiftCardProps) {
   const [viewingShift, setViewingShift] = useState<Shift | null>(null);
+  const [withdrawingShifts, setWithdrawingShifts] = useState<Shift[]>([]);
+  const [withdrawReason, setWithdrawReason] = useState('');
+  const [withdrawing, setWithdrawing] = useState(false);
   const isAdmin = (userRole || '').toLowerCase() === 'admin';
   const isTeamLeader = userRole === 'TL';
 
@@ -48,6 +53,42 @@ export function ShiftCard({ userId, userRole, date, earlyShift, lateShift, onSig
 
   const isUserSignedUp = (shift?: Shift) => {
     return shift?.volunteers.some(volunteer => volunteer.id === userId) ?? false;
+  };
+
+  const handleWithdraw = async () => {
+    if (!withdrawReason.trim()) return;
+    
+    try {
+      setWithdrawing(true);
+      
+      // For Team Leaders, withdraw from both shifts
+      if (isTeamLeader && withdrawingShifts.length === 2) {
+        await withdrawFromShifts(withdrawingShifts.map(s => s.id), withdrawReason);
+      } else {
+        // Regular volunteer withdrawal
+        await withdrawFromShift(withdrawingShifts[0].id, withdrawReason);
+      }
+      
+      setWithdrawingShifts([]);
+      setWithdrawReason('');
+      onWithdraw();
+    } catch (error) {
+      console.error('Failed to withdraw:', error);
+    } finally {
+      setWithdrawing(false);
+    }
+  };
+
+  const handleWithdrawClick = (shift: Shift) => {
+    if (isTeamLeader) {
+      // Team Leaders must withdraw from both shifts
+      const otherShift = shift.type === 'early' ? lateShift : earlyShift;
+      if (otherShift && isUserSignedUp(otherShift)) {
+        setWithdrawingShifts([shift, otherShift]);
+      }
+    } else {
+      setWithdrawingShifts([shift]);
+    }
   };
 
   const getButtonText = (shift?: Shift) => {
@@ -184,6 +225,14 @@ export function ShiftCard({ userId, userRole, date, earlyShift, lateShift, onSig
               >
                 {getButtonText(earlyShift)}
               </button>
+              {isUserSignedUp(earlyShift) && (
+                <button
+                  onClick={() => handleWithdrawClick(earlyShift!)}
+                  className="ml-2 text-red-600 hover:text-red-700"
+                >
+                  <LogOut className="h-5 w-5" />
+                </button>
+              )}
               {earlyShift && (
                 <button
                   onClick={() => setViewingShift(earlyShift)}
@@ -215,6 +264,14 @@ export function ShiftCard({ userId, userRole, date, earlyShift, lateShift, onSig
               >
                 {getButtonText(lateShift)}
               </button>
+              {isUserSignedUp(lateShift) && (
+                <button
+                  onClick={() => handleWithdrawClick(lateShift!)}
+                  className="ml-2 text-red-600 hover:text-red-700"
+                >
+                  <LogOut className="h-5 w-5" />
+                </button>
+              )}
               {lateShift && (
                 <button
                   onClick={() => setViewingShift(lateShift)}
@@ -234,6 +291,46 @@ export function ShiftCard({ userId, userRole, date, earlyShift, lateShift, onSig
           isTeamLeader={isTeamLeader}
           onClose={() => setViewingShift(null)}
         />
+      )}
+      
+      {/* Withdrawal Modal */}
+      {withdrawingShifts.length > 0 && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              {isTeamLeader ? 'Withdraw from Both Shifts' : 'Withdraw from Shift'}
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Please provide a reason for withdrawing from {isTeamLeader ? 'these shifts' : 'this shift'}.
+            </p>
+            <textarea
+              value={withdrawReason}
+              onChange={(e) => setWithdrawReason(e.target.value)}
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              rows={3}
+              placeholder="Enter your reason..."
+              required
+            />
+            <div className="mt-4 flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setWithdrawingShifts([]);
+                  setWithdrawReason('');
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleWithdraw}
+                disabled={!withdrawReason.trim() || withdrawing}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm hover:bg-red-700 disabled:opacity-50"
+              >
+                {withdrawing ? 'Withdrawing...' : 'Withdraw'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

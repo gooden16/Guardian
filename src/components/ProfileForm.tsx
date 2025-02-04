@@ -41,14 +41,19 @@ export function ProfileForm({ profile, onUpdate, onCancel }: ProfileFormProps) {
     setError(null);
 
     try {
-      // Update profile information
+      // Only update role if it changed
       const updates = {
         first_name: formData.first_name,
         last_name: formData.last_name,
-        role: formData.role,
         phone: formData.phone || null,
         preferred_shift: formData.preferred_shift || null,
       };
+
+      if (formData.role !== profile.role) {
+        updates.role = formData.role;
+      }
+
+      // Update profile information
 
       await updateUserProfile(profile.id, updates);
 
