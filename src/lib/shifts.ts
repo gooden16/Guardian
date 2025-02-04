@@ -81,7 +81,8 @@ export async function getShifts(startDate: Date, endDate: Date): Promise<Shift[]
           profiles!inner (
             first_name,
             last_name,
-            role
+            role,
+            avatar_url
           )
         ),
         shift_messages!left (
@@ -118,7 +119,8 @@ export async function getShifts(startDate: Date, endDate: Date): Promise<Shift[]
       volunteers: shift.shift_volunteers?.map(sv => ({
         id: sv.user_id,
         role: sv.profiles.role,
-        name: `${sv.profiles.first_name} ${sv.profiles.last_name}`
+        name: `${sv.profiles.first_name} ${sv.profiles.last_name}`,
+        avatar_url: sv.profiles.avatar_url
       })) || [],
       messages: shift.shift_messages?.map(msg => ({
         id: msg.id,
@@ -155,7 +157,8 @@ export async function getUserShifts(): Promise<Shift[]> {
           profiles!inner (
             first_name,
             last_name,
-            role
+            role,
+            avatar_url
           )
         ),
         shift_messages!left (
@@ -186,7 +189,8 @@ export async function getUserShifts(): Promise<Shift[]> {
       volunteers: shift.shift_volunteers?.map(sv => ({
         id: sv.user_id,
         role: sv.profiles.role,
-        name: `${sv.profiles.first_name} ${sv.profiles.last_name}`
+        name: `${sv.profiles.first_name} ${sv.profiles.last_name}`,
+        avatar_url: sv.profiles.avatar_url
       })) || [],
       messages: shift.shift_messages?.map(msg => ({
         id: msg.id,

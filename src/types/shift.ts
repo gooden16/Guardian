@@ -13,6 +13,7 @@ export interface ShiftVolunteer {
   id: string;
   role: VolunteerRole;
   name: string;
+  avatar_url?: string;
 }
 
 export interface ShiftMessage {

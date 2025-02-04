@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getUserShifts } from '../lib/shifts';
 import { getUserProfile, updateUserProfile } from '../lib/profiles';
+import { Avatar } from '../components/Avatar';
 import { UserShifts } from '../components/UserShifts';
 import { ProfileForm } from '../components/ProfileForm';
 import { Pencil } from 'lucide-react';
@@ -104,20 +105,11 @@ export function Profile() {
         <div className="bg-white shadow rounded-lg p-6">
         <div className="space-y-4">
           <div className="flex justify-center">
-            {profile?.avatar_url ? (
-              <img
-                src={profile.avatar_url}
-                alt="Profile"
-                className="w-24 h-24 rounded-full object-cover"
-              />
-            ) : (
-              <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center">
-                <span className="text-gray-400">
-                  {profile?.first_name?.[0]?.toUpperCase() || ''}
-                  {profile?.last_name?.[0]?.toUpperCase() || ''}
-                </span>
-              </div>
-            )}
+            <Avatar
+              url={profile?.avatar_url}
+              name={`${profile?.first_name} ${profile?.last_name}`}
+              size="lg"
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Name</label>

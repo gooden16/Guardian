@@ -107,8 +107,22 @@ export async function updateUserPassword(currentPassword: string, newPassword: s
 
 export async function updateUserAvatar(userId: string, file: File): Promise<string> {
   const fileExt = file.name.split('.').pop();
-  const fileName = `${userId}-${Math.random()}.${fileExt}`;
+  const fileName = `${userId}/${userId}.${fileExt}`;
 
+  // First, try to delete any existing avatar
+  const { data: existingFiles } = await supabase.storage
+    .from('avatars')
+    .list(userId);
+
+  const existingAvatar = existingFiles?.find(f => f.name.startsWith(`${userId}.`) && f.name !== '.emptyFolderPlaceholder');
+  if (existingAvatar) {
+    console.log('Deleting existing avatar:', existingAvatar.name);
+    await supabase.storage
+      .from('avatars')
+      .remove([`${userId}/${existingAvatar.name}`]);
+  }
+
+  console.log('Uploading new avatar:', fileName);
   const { error: uploadError } = await supabase.storage
     .from('avatars')
     .upload(fileName, file, {
@@ -116,12 +130,23 @@ export async function updateUserAvatar(userId: string, file: File): Promise<stri
       upsert: true
     });
 
-  if (uploadError) throw uploadError;
+  if (uploadError) {
+    console.error('Upload error:', uploadError);
+    throw uploadError;
+  }
 
+  // Get the public URL
   const { data: { publicUrl } } = supabase.storage
     .from('avatars')
     .getPublicUrl(fileName);
 
+  if (!publicUrl) {
+    throw new Error('Failed to get public URL for avatar');
+  }
+
+  console.log('Avatar URL:', publicUrl); // Debug log
+
+  // Update profile with new avatar URL
   await updateUserProfile(userId, { avatar_url: publicUrl });
 
   return publicUrl;

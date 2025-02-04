@@ -2,6 +2,7 @@ import React from 'react';
 import { format } from 'date-fns';
 import { Calendar, MessageCircle, LogOut } from 'lucide-react';
 import { useState } from 'react';
+import { Avatar } from './Avatar';
 import { ShiftView } from './ShiftView';
 import { withdrawFromShift, withdrawFromShifts } from '../lib/shifts';
 import type { Shift } from '../types/shift';
@@ -91,6 +92,24 @@ export function UserShifts({ shifts, userId, userRole, onWithdraw, className = '
           className="bg-white rounded-lg shadow-sm p-4 flex items-center justify-between hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         >
           <div>
+            <div className="flex items-center space-x-2 mb-2">
+              {shift.volunteers.map(volunteer => (
+                <div key={volunteer.id} className="relative">
+                  <Avatar
+                    url={volunteer.avatar_url}
+                    name={volunteer.name}
+                    size="sm"
+                  />
+                  <span className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white
+                    ${volunteer.role === 'TL' 
+                      ? 'bg-purple-400'
+                      : volunteer.role === 'L2'
+                      ? 'bg-blue-400'
+                      : 'bg-green-400'}`}
+                  />
+                </div>
+              ))}
+            </div>
             <p className="text-sm font-medium text-gray-900">
               {format(new Date(shift.date), 'MMMM d, yyyy')}
             </p>

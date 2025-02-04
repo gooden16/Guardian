@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { Users, Send, X } from 'lucide-react';
+import { Avatar } from './Avatar';
 import { supabase } from '../lib/supabase';
 import type { Shift } from '../types/shift';
 
@@ -70,9 +71,20 @@ export function ShiftView({ shift, isAdmin, isTeamLeader, onClose }: ShiftViewPr
                   key={volunteer.id}
                   className="flex items-center justify-between bg-gray-50 px-4 py-2 rounded-md"
                 >
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{volunteer.name}</p>
-                    <p className="text-xs text-gray-500">{volunteer.role}</p>
+                  <div className="flex items-center space-x-3">
+                    <Avatar
+                      url={volunteer.avatar_url}
+                      name={volunteer.name}
+                      size="md"
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{volunteer.name}</p>
+                      <p className="text-xs text-gray-500">
+                        {volunteer.role === 'TL' ? 'Team Leader' :
+                         volunteer.role === 'L2' ? 'Level 2 Volunteer' :
+                         'Level 1 Volunteer'}
+                      </p>
+                    </div>
                   </div>
                 </div>
               ))}
