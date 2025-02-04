@@ -6,6 +6,17 @@ import { Login } from './pages/Login';
 import { Admin } from './pages/Admin';
 import { ShiftBoard } from './pages/ShiftBoard';
 import { Profile } from './pages/Profile';
+import { AuthProvider } from './context/AuthProvider';
+
+function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        {/* existing routes */}
+      </BrowserRouter>
+    </AuthProvider>
+  );
+}
 
 function App() {
   return (
