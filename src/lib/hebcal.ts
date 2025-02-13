@@ -1,3 +1,5 @@
+import { addDays } from 'date-fns';
+
 interface HebcalEvent {
   title: string;
   date: string;
@@ -17,6 +19,7 @@ export async function getUpcomingShabbatDates(startDate: Date, count: number = 1
   const year = startDate.getFullYear();
   const month = startDate.getMonth() + 1;
   
+  // Request data from HebCal API
   const response = await fetch(
     `https://www.hebcal.com/hebcal?v=1&cfg=json&year=${year}&month=${month}&i=off&maj=on&min=on&mod=on&nx=on&mf=on&ss=on&s=on`
   );
@@ -28,7 +31,8 @@ export async function getUpcomingShabbatDates(startDate: Date, count: number = 1
     .filter(event => event.category === 'parashat')
     .slice(0, count)
     .map(event => ({
-      date: new Date(event.date),
+      // Add one day to the date to get Saturday morning instead of Friday evening
+      date: addDays(new Date(event.date), 1),
       parasha: event.title.replace('Parashat ', ''),
       hebrew: event.hebrew
     }));
