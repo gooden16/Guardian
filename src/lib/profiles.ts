@@ -1,21 +1,11 @@
 import { supabase } from './supabase';
 import type { User } from '@supabase/supabase-js';
-import type { Profile, ProfileUpdate, VolunteerRole } from '../types/profile';
+import type { Profile, ProfileUpdate, NotificationPrefs } from '../types/profile';
 
 export async function getUserProfile(userId: string): Promise<Profile | null> {
-  const { data: profile, error } = await supabase
+  const { data, error } = await supabase
     .from('profiles')
-    .select(`
-      id,
-      email,
-      first_name,
-      last_name,
-      phone,
-      role,
-      preferred_shift,
-      avatar_url,
-      is_admin
-    `)
+    .select('*')
     .eq('id', userId)
     .single();
 
@@ -24,31 +14,36 @@ export async function getUserProfile(userId: string): Promise<Profile | null> {
     return null;
   }
 
-  return profile;
+  return data;
 }
 
+/** Creates a profile row for a brand-new OAuth user if one doesn't exist yet. */
 export async function createUserProfile(user: User) {
   try {
-    // Check if profile already exists
-    const { data: existingProfile } = await supabase
+    const { data: existing } = await supabase
       .from('profiles')
       .select('id')
       .eq('id', user.id)
       .maybeSingle();
 
-    if (existingProfile) return; // Profile already exists
+    if (existing) return;
 
-    // Create new profile
-    const { error } = await supabase
-      .from('profiles')
-      .insert({
-        id: user.id,
-        email: user.email,
-        first_name: 'New',
-        last_name: 'User',
-        role: 'L1', // Start as Level 1
-        is_admin: false
-      });
+    // Try to extract name from OAuth metadata (Google/Apple)
+    const meta = user.user_metadata ?? {};
+    const fullName: string = meta.full_name || meta.name || '';
+    const parts = fullName.trim().split(' ');
+    const firstName = parts[0] || 'New';
+    const lastName = parts.slice(1).join(' ') || 'User';
+
+    const { error } = await supabase.from('profiles').insert({
+      id: user.id,
+      email: user.email ?? '',
+      first_name: firstName,
+      last_name: lastName,
+      role: 'L1',
+      is_admin: false,
+      onboarding_complete: false,
+    });
 
     if (error) throw error;
   } catch (error) {
@@ -56,39 +51,7 @@ export async function createUserProfile(user: User) {
   }
 }
 
-export async function requestRoleChange(newRole: VolunteerRole): Promise<string> {
-  // Get current user's role first
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('role')
-    .single();
-
-  if (profileError) throw profileError;
-  if (!profile) throw new Error('User profile not found');
-
-  // Don't allow requesting the same role
-  if (profile.role === newRole) {
-    throw new Error('You already have this role');
-  }
-
-  const { data, error } = await supabase
-    .rpc('request_role_change', {
-      requested_role: newRole
-    });
-
-  if (error) throw error;
-  return data;
-}
-
 export async function updateUserProfile(userId: string, updates: ProfileUpdate): Promise<void> {
-  // If role is being updated, create a role change request instead
-  if (updates.role) {
-    await requestRoleChange(updates.role);
-    // Remove role from updates to prevent direct update
-    const { role, ...otherUpdates } = updates;
-    updates = otherUpdates;
-  }
-
   const { error } = await supabase
     .from('profiles')
     .update(updates)
@@ -97,10 +60,11 @@ export async function updateUserProfile(userId: string, updates: ProfileUpdate):
   if (error) throw error;
 }
 
-export async function updateUserPassword(currentPassword: string, newPassword: string): Promise<void> {
-  const { error } = await supabase.auth.updateUser({
-    password: newPassword
-  });
+export async function updateNotificationPrefs(userId: string, prefs: NotificationPrefs): Promise<void> {
+  const { error } = await supabase
+    .from('profiles')
+    .update(prefs)
+    .eq('id', userId);
 
   if (error) throw error;
 }
@@ -109,45 +73,51 @@ export async function updateUserAvatar(userId: string, file: File): Promise<stri
   const fileExt = file.name.split('.').pop();
   const fileName = `${userId}/${userId}.${fileExt}`;
 
-  // First, try to delete any existing avatar
-  const { data: existingFiles } = await supabase.storage
-    .from('avatars')
-    .list(userId);
-
-  const existingAvatar = existingFiles?.find(f => f.name.startsWith(`${userId}.`) && f.name !== '.emptyFolderPlaceholder');
+  const { data: existingFiles } = await supabase.storage.from('avatars').list(userId);
+  const existingAvatar = existingFiles?.find(
+    (f) => f.name.startsWith(`${userId}.`) && f.name !== '.emptyFolderPlaceholder'
+  );
   if (existingAvatar) {
-    console.log('Deleting existing avatar:', existingAvatar.name);
-    await supabase.storage
-      .from('avatars')
-      .remove([`${userId}/${existingAvatar.name}`]);
+    await supabase.storage.from('avatars').remove([`${userId}/${existingAvatar.name}`]);
   }
 
-  console.log('Uploading new avatar:', fileName);
   const { error: uploadError } = await supabase.storage
     .from('avatars')
-    .upload(fileName, file, {
-      cacheControl: '3600',
-      upsert: true
-    });
+    .upload(fileName, file, { cacheControl: '3600', upsert: true });
 
-  if (uploadError) {
-    console.error('Upload error:', uploadError);
-    throw uploadError;
-  }
+  if (uploadError) throw uploadError;
 
-  // Get the public URL
-  const { data: { publicUrl } } = supabase.storage
-    .from('avatars')
-    .getPublicUrl(fileName);
+  const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
+  if (!publicUrl) throw new Error('Failed to get public URL for avatar');
 
-  if (!publicUrl) {
-    throw new Error('Failed to get public URL for avatar');
-  }
-
-  console.log('Avatar URL:', publicUrl); // Debug log
-
-  // Update profile with new avatar URL
   await updateUserProfile(userId, { avatar_url: publicUrl });
-
   return publicUrl;
+}
+
+/** Save a volunteer's scheduling preferences */
+export async function updateSchedulingPrefs(
+  userId: string,
+  prefs: {
+    preferred_shift?: 'early' | 'late' | 'none';
+    blackout_dates?: string[];
+    partner_preferences?: string[];
+  }
+): Promise<void> {
+  const { error } = await supabase
+    .from('profiles')
+    .update(prefs)
+    .eq('id', userId);
+
+  if (error) throw error;
+}
+
+/** Fetch all volunteer profiles (admin use) */
+export async function getAllProfiles(): Promise<Profile[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .order('last_name');
+
+  if (error) throw error;
+  return data ?? [];
 }

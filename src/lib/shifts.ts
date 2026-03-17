@@ -1,5 +1,119 @@
 import { supabase } from './supabase';
-import type { Shift } from '../types/shift';
+import type { Shift, EventDay, ShiftVolunteer } from '../types/shift';
+
+// =====================================================================
+// NEW API — quarter-scoped, used by Phase 3+ pages
+// =====================================================================
+
+/** Fetch all published shifts for a quarter, with volunteer assignments */
+export async function getQuarterShifts(quarterId: string): Promise<Shift[]> {
+  const { data, error } = await supabase
+    .from('shifts')
+    .select(`
+      id, date, type, status, event_type, event_title, event_notes,
+      hebrew_parasha, quarter_id,
+      shift_assignments (
+        id, user_id, assignment_source,
+        profiles ( first_name, last_name, role, avatar_url )
+      )
+    `)
+    .eq('quarter_id', quarterId)
+    .order('date', { ascending: true })
+    .order('type', { ascending: true });
+
+  if (error) throw error;
+
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    date: row.date,
+    type: row.type,
+    status: row.status,
+    event_type: row.event_type ?? 'shabbat',
+    event_title: row.event_title ?? null,
+    event_notes: row.event_notes ?? null,
+    hebrew_parasha: row.hebrew_parasha ?? null,
+    quarter_id: row.quarter_id,
+    volunteers: (row.shift_assignments ?? []).map((a: any): ShiftVolunteer => ({
+      id: a.id,
+      user_id: a.user_id,
+      first_name: a.profiles?.first_name ?? '',
+      last_name: a.profiles?.last_name ?? '',
+      role: a.profiles?.role ?? 'L1',
+      avatar_url: a.profiles?.avatar_url ?? null,
+      assignment_source: a.assignment_source ?? 'auto',
+    })),
+  }));
+}
+
+/** Group a flat list of shifts into EventDay objects (early+late per date) */
+export function groupShiftsByDate(shifts: Shift[]): EventDay[] {
+  const byDate = new Map<string, EventDay>();
+
+  for (const shift of shifts) {
+    if (!byDate.has(shift.date)) {
+      byDate.set(shift.date, {
+        date: shift.date,
+        event_title: shift.event_title ?? shift.hebrew_parasha ?? shift.date,
+        event_notes: shift.event_notes ?? undefined,
+        event_type: shift.event_type ?? 'shabbat',
+        hebrew_parasha: shift.hebrew_parasha ?? undefined,
+      });
+    }
+    const day = byDate.get(shift.date)!;
+    if (shift.type === 'early') day.early_shift = shift;
+    else day.late_shift = shift;
+  }
+
+  return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/** Fetch only the current user's assigned shifts for a quarter */
+export async function getMyAssignments(quarterId: string): Promise<Shift[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from('shifts')
+    .select(`
+      id, date, type, status, event_type, event_title, event_notes,
+      hebrew_parasha, quarter_id,
+      shift_assignments!inner (
+        id, user_id, assignment_source,
+        profiles ( first_name, last_name, role, avatar_url )
+      )
+    `)
+    .eq('quarter_id', quarterId)
+    .eq('shift_assignments.user_id', user.id)
+    .order('date', { ascending: true });
+
+  if (error) throw error;
+
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    date: row.date,
+    type: row.type,
+    status: row.status,
+    event_type: row.event_type ?? 'shabbat',
+    event_title: row.event_title ?? null,
+    event_notes: row.event_notes ?? null,
+    hebrew_parasha: row.hebrew_parasha ?? null,
+    quarter_id: row.quarter_id,
+    volunteers: (row.shift_assignments ?? []).map((a: any): ShiftVolunteer => ({
+      id: a.id,
+      user_id: a.user_id,
+      first_name: a.profiles?.first_name ?? '',
+      last_name: a.profiles?.last_name ?? '',
+      role: a.profiles?.role ?? 'L1',
+      avatar_url: a.profiles?.avatar_url ?? null,
+      assignment_source: a.assignment_source ?? 'auto',
+    })),
+  }));
+}
+
+// =====================================================================
+// LEGACY API — kept for backward compat with ShiftBoard.tsx
+// (to be removed in Phase 6)
+// =====================================================================
 
 export function formatDateForDB(dateStr: string): string {
   const date = new Date(dateStr);

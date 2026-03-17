@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Camera } from 'lucide-react';
 import type { Profile, ProfileFormData } from '../types/profile';
-import { updateUserProfile, updateUserPassword, updateUserAvatar } from '../lib/profiles';
+import { updateUserProfile, updateUserAvatar } from '../lib/profiles';
 
 interface ProfileFormProps {
   profile: Profile;
@@ -13,7 +13,6 @@ export function ProfileForm({ profile, onUpdate, onCancel }: ProfileFormProps) {
   const [formData, setFormData] = useState<ProfileFormData>({
     first_name: profile.first_name,
     last_name: profile.last_name,
-    role: profile.role,
     phone: profile.phone || '',
     preferred_shift: profile.preferred_shift,
   });
@@ -41,31 +40,13 @@ export function ProfileForm({ profile, onUpdate, onCancel }: ProfileFormProps) {
     setError(null);
 
     try {
-      // Only update role if it changed
-      const updates = {
+      await updateUserProfile(profile.id, {
         first_name: formData.first_name,
         last_name: formData.last_name,
         phone: formData.phone || null,
         preferred_shift: formData.preferred_shift || null,
-      };
+      });
 
-      if (formData.role !== profile.role) {
-        updates.role = formData.role;
-      }
-
-      // Update profile information
-
-      await updateUserProfile(profile.id, updates);
-
-      // Update password if provided
-      if (formData.current_password && formData.new_password) {
-        if (formData.new_password !== formData.confirm_password) {
-          throw new Error('New passwords do not match');
-        }
-        await updateUserPassword(formData.current_password, formData.new_password);
-      }
-
-      // Update avatar if provided
       if (avatarFile) {
         await updateUserAvatar(profile.id, avatarFile);
       }
@@ -81,15 +62,11 @@ export function ProfileForm({ profile, onUpdate, onCancel }: ProfileFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Avatar Upload */}
-      <div className="flex items-center space-x-6">
+      <div className="flex items-center space-x-4">
         <div className="relative">
           <div className="w-20 h-20 rounded-full overflow-hidden bg-gray-100">
             {avatarPreview ? (
-              <img
-                src={avatarPreview}
-                alt="Profile"
-                className="w-full h-full object-cover"
-              />
+              <img src={avatarPreview} alt="Profile" className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-gray-400">
                 <Camera className="w-8 h-8" />
@@ -98,157 +75,80 @@ export function ProfileForm({ profile, onUpdate, onCancel }: ProfileFormProps) {
           </div>
           <label className="absolute bottom-0 right-0 bg-white rounded-full p-1 shadow-lg cursor-pointer">
             <Camera className="w-4 h-4 text-gray-600" />
-            <input
-              type="file"
-              className="hidden"
-              accept="image/*"
-              onChange={handleAvatarChange}
-            />
+            <input type="file" className="hidden" accept="image/*" onChange={handleAvatarChange} />
           </label>
         </div>
-        <div className="text-sm text-gray-600">
-          Click the camera icon to upload a new photo
-        </div>
+        <p className="text-sm text-gray-500">Tap the camera to change your photo</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label className="block text-sm font-medium text-gray-700">
-            First Name
-          </label>
+          <label className="block text-sm font-medium text-gray-700">First Name</label>
           <input
             type="text"
             name="first_name"
             value={formData.first_name}
             onChange={handleInputChange}
             required
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Last Name
-          </label>
+          <label className="block text-sm font-medium text-gray-700">Last Name</label>
           <input
             type="text"
             name="last_name"
             value={formData.last_name}
             onChange={handleInputChange}
             required
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Role
-          </label>
-          <select
-            name="role"
-            value={formData.role}
-            onChange={handleInputChange}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-          >
-            <option value="L1">Level 1 Volunteer</option>
-            <option value="L2">Level 2 Volunteer</option>
-            <option value="TL">Team Leader</option>
-          </select>
-          <p className="mt-1 text-xs text-gray-500">
-            Role changes require admin approval
-          </p>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Phone Number
-          </label>
+          <label className="block text-sm font-medium text-gray-700">Phone</label>
           <input
             type="tel"
             name="phone"
             value={formData.phone}
             onChange={handleInputChange}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder="(212) 555-0100"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Preferred Shift
-          </label>
+          <label className="block text-sm font-medium text-gray-700">Preferred Shift</label>
           <select
             name="preferred_shift"
-            value={formData.preferred_shift || ''}
+            value={formData.preferred_shift || 'none'}
             onChange={handleInputChange}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
-            <option value="">No preference</option>
-            <option value="early">Early (8:35 AM - 10:10 AM)</option>
-            <option value="late">Late (10:20 AM - 12:00 PM)</option>
+            <option value="none">No preference</option>
+            <option value="early">Early (8:35–10:10 AM)</option>
+            <option value="late">Late (10:20 AM–12:00 PM)</option>
           </select>
         </div>
       </div>
 
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium text-gray-900">Change Password</h3>
-        <div className="grid grid-cols-1 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Current Password
-            </label>
-            <input
-              type="password"
-              name="current_password"
-              value={formData.current_password || ''}
-              onChange={handleInputChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              New Password
-            </label>
-            <input
-              type="password"
-              name="new_password"
-              value={formData.new_password || ''}
-              onChange={handleInputChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Confirm New Password
-            </label>
-            <input
-              type="password"
-              name="confirm_password"
-              value={formData.confirm_password || ''}
-              onChange={handleInputChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            />
-          </div>
-        </div>
-      </div>
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
-      {error && (
-        <div className="text-red-600 text-sm">{error}</div>
-      )}
-
-      <div className="flex justify-end space-x-3">
+      <div className="flex justify-end gap-3">
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={loading}
-          className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+          className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
         >
-          {loading ? 'Saving...' : 'Save Changes'}
+          {loading ? 'Saving…' : 'Save changes'}
         </button>
       </div>
     </form>
